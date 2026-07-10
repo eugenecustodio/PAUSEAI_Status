@@ -8,7 +8,7 @@ test('the product film is user-controlled, local, lazy, and replaceable at its s
 }) => {
   await page.goto(`${projectBase}/`);
 
-  const video = page.getByLabel('PAUSE AI 30-second product film');
+  const video = page.getByLabel('PAUSE AI 45-second product film');
   await expect(video).toHaveCount(1);
   await expect(video).toHaveAttribute('controls', '');
   expect(await video.getAttribute('autoplay')).toBeNull();
@@ -48,7 +48,7 @@ test('update filtering is accessible and restores the complete journal', async (
     'aria-pressed',
     'true',
   );
-  await expect(cards).toHaveCount(4);
+  await expect(cards).toHaveCount(5);
 
   const backend = filters.getByRole('button', { name: 'Backend', exact: true });
   await backend.focus();
@@ -58,7 +58,7 @@ test('update filtering is accessible and restores the complete journal', async (
   await expect(cards.getByRole('heading')).toContainText(/Supabase and Qwen/i);
 
   await filters.getByRole('button', { name: 'All', exact: true }).click();
-  await expect(cards).toHaveCount(4);
+  await expect(cards).toHaveCount(5);
 });
 
 test('status uses explicit state text and separates each evidence layer', async ({ page }) => {

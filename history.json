@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-10T22:44:30.263Z",
+  "generatedAt": "2026-07-10T23:42:23.175Z",
   "samples": [
     {
       "generatedAt": "2026-07-10T08:22:17.000Z",
@@ -501,6 +501,52 @@
           "id": "privacy_cleanup",
           "status": "not_configured",
           "checkedAt": "2026-07-10T22:44:30.263Z"
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-07-10T23:42:23.175Z",
+      "overallStatus": "operational",
+      "stale": false,
+      "checks": [
+        {
+          "id": "auth_gateway",
+          "status": "operational",
+          "checkedAt": "2026-07-10T23:42:23.175Z",
+          "latencyMs": 825
+        },
+        {
+          "id": "synthetic_account",
+          "status": "operational",
+          "checkedAt": "2026-07-10T23:42:23.175Z",
+          "latencyMs": 767
+        },
+        {
+          "id": "database_rls",
+          "status": "operational",
+          "checkedAt": "2026-07-10T23:42:23.175Z",
+          "latencyMs": 761
+        },
+        {
+          "id": "edge_functions",
+          "status": "operational",
+          "checkedAt": "2026-07-10T23:42:23.175Z",
+          "latencyMs": 450
+        },
+        {
+          "id": "qwen_classification",
+          "status": "not_configured",
+          "checkedAt": "2026-07-10T23:42:23.175Z"
+        },
+        {
+          "id": "qwen_digest",
+          "status": "not_configured",
+          "checkedAt": "2026-07-10T23:42:23.175Z"
+        },
+        {
+          "id": "privacy_cleanup",
+          "status": "not_configured",
+          "checkedAt": "2026-07-10T23:42:23.175Z"
         }
       ]
     }

@@ -110,7 +110,7 @@ jobs:
           else
             git worktree add --detach "$STATUS_WORKTREE"
             git -C "$STATUS_WORKTREE" switch --orphan status-data
-            git -C "$STATUS_WORKTREE" rm -rf .
+            git -C "$STATUS_WORKTREE" rm -rf --ignore-unmatch .
           fi
           cp public/status/current.json "$STATUS_WORKTREE/current.json"
           cp public/status/history.json "$STATUS_WORKTREE/history.json"

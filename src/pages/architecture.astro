@@ -1,0 +1,134 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { edgeFunctions } from '../data/release';
+---
+
+<BaseLayout
+  title="Architecture"
+  description="How PAUSE AI keeps notification decisions local while using Supabase and Qwen as consented supporting systems."
+>
+  <section class="page-hero shell" aria-labelledby="architecture-title">
+      <p class="eyebrow">System design</p>
+      <h1 id="architecture-title">AI advises. Your boundary decides.</h1>
+      <p class="lede">
+        PAUSE is an Android-first boundary broker—not a messenger. It observes selected notifications,
+        applies deterministic local policy, and only asks cloud AI for guidance when the account owner opts in.
+      </p>
+  </section>
+
+  <section class="shell architecture-section" aria-labelledby="flow-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Decision path</p>
+          <h2 id="flow-title">From interruption to intentional delivery</h2>
+        </div>
+        <p>Read the flow left to right. Each numbered stage remains understandable without color or animation.</p>
+      </div>
+
+      <figure class="architecture-flow">
+        <ol>
+          <li class="flow-card local">
+            <span class="step">01 · Device</span>
+            <h3>Android listener</h3>
+            <p>Receives notifications only from apps the person explicitly allows.</p>
+          </li>
+          <li class="flow-card local">
+            <span class="step">02 · Local</span>
+            <h3>Policy engine</h3>
+            <p>Checks pause state, exceptions, urgency rules, and active boundaries first.</p>
+          </li>
+          <li class="flow-card local">
+            <span class="step">03 · Local</span>
+            <h3>SQLite + SecureStore</h3>
+            <p>Keeps the device experience responsive and stores private state locally.</p>
+          </li>
+          <li class="flow-card cloud">
+            <span class="step">04 · Consented cloud</span>
+            <h3>Supabase + RLS</h3>
+            <p>Authenticates the owner and enforces owner-scoped rows at the database boundary.</p>
+          </li>
+          <li class="flow-card cloud">
+            <span class="step">05 · Server</span>
+            <h3>Edge Functions</h3>
+            <p>Validate requests, enforce privacy settings, and keep provider credentials off-device.</p>
+          </li>
+          <li class="flow-card advisory">
+            <span class="step">06 · Advisory</span>
+            <h3>Qwen response</h3>
+            <p>Returns classification or digest guidance; deterministic policy remains authoritative.</p>
+          </li>
+        </ol>
+        <figcaption>
+          Local stages work without Cloud AI. Cloud processing is consented, server-only, and treated as advice.
+        </figcaption>
+      </figure>
+  </section>
+
+  <section class="shell principles" aria-labelledby="principles-title">
+      <div>
+        <p class="eyebrow">Trust boundaries</p>
+        <h2 id="principles-title">Designed for graceful failure</h2>
+      </div>
+      <div class="trust-grid">
+        <article>
+          <span aria-hidden="true">⌁</span>
+          <h3>Local authority</h3>
+          <p>Rules and explicit exceptions override uncertain AI output.</p>
+        </article>
+        <article>
+          <span aria-hidden="true">◌</span>
+          <h3>Owner isolation</h3>
+          <p>Supabase Row Level Security limits cloud reads and writes to the signed-in owner.</p>
+        </article>
+        <article>
+          <span aria-hidden="true">∅</span>
+          <h3>Honest fallback</h3>
+          <p>Network or provider ambiguity becomes a safe deterministic result—not a fabricated AI success.</p>
+        </article>
+      </div>
+  </section>
+
+  <section class="shell functions" aria-labelledby="functions-title">
+      <p class="eyebrow">Release evidence</p>
+      <h2 id="functions-title">Nine deployed Edge Functions</h2>
+      <ul>
+        {edgeFunctions.map((name) => <li><code>{name}</code></li>)}
+      </ul>
+      <p class="fine-print">Names are public release evidence. Provider responses, credentials, and application source remain private.</p>
+  </section>
+</BaseLayout>
+
+<style>
+  .page-hero { padding-block: clamp(7rem, 16vw, 12rem) 4rem; max-width: 1000px; }
+  .page-hero h1 { max-width: 13ch; }
+  .architecture-section, .principles, .functions { padding-block: 4rem 8rem; }
+  .section-heading { display: grid; grid-template-columns: 1.2fr .8fr; gap: 2rem; align-items: end; margin-bottom: 2.5rem; }
+  .section-heading > p { max-width: 50ch; color: var(--color-muted); }
+  .architecture-flow { margin: 0; }
+  .architecture-flow ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 0; padding: 1px; list-style: none; background: var(--color-line); border: 1px solid var(--color-line); border-radius: var(--radius-xl); overflow: hidden; }
+  .flow-card { position: relative; min-height: 220px; padding: 1.6rem; background: var(--color-surface); }
+  .flow-card::after { content: '→'; position: absolute; right: -0.7rem; top: 50%; z-index: 1; display: grid; width: 1.4rem; height: 1.4rem; place-items: center; border-radius: 50%; color: var(--color-bg); background: var(--color-calm); }
+  .flow-card:nth-child(3)::after, .flow-card:last-child::after { display: none; }
+  .step { color: var(--color-privacy); font: .72rem var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+  .flow-card h3 { margin-top: 2.4rem; }
+  .flow-card p { color: var(--color-muted); line-height: 1.65; }
+  .flow-card.cloud { background: color-mix(in srgb, var(--color-focus) 8%, var(--color-surface)); }
+  .flow-card.advisory { background: color-mix(in srgb, var(--color-alert) 8%, var(--color-surface)); }
+  figcaption { margin-top: 1rem; color: var(--color-muted); font-size: .9rem; }
+  .principles { display: grid; grid-template-columns: .75fr 1.25fr; gap: 3rem; }
+  .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .trust-grid article { padding: 1.5rem; border: 1px solid var(--color-line); border-radius: var(--radius-lg); }
+  .trust-grid article > span { color: var(--color-calm); font-size: 1.5rem; }
+  .trust-grid p { color: var(--color-muted); line-height: 1.65; }
+  .functions ul { display: flex; flex-wrap: wrap; gap: .65rem; padding: 0; list-style: none; }
+  .functions li { padding: .65rem .8rem; border: 1px solid var(--color-line); border-radius: 999px; background: var(--color-surface); }
+  .functions code { color: var(--color-calm); }
+  .fine-print { color: var(--color-muted); font-size: .9rem; }
+  @media (max-width: 800px) {
+    .section-heading, .principles { grid-template-columns: 1fr; }
+    .architecture-flow ol, .trust-grid { grid-template-columns: 1fr; }
+    .flow-card { min-height: 180px; }
+    .flow-card::after, .flow-card:nth-child(3)::after { top: auto; right: 50%; bottom: -0.7rem; display: grid; transform: translateX(50%) rotate(90deg); }
+    .flow-card:last-child::after { display: none; }
+  }
+</style>

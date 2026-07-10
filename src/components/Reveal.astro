@@ -1,0 +1,42 @@
+---
+interface Props {
+  class?: string;
+  delay?: number;
+}
+
+const { class: className, delay = 0 } = Astro.props;
+---
+
+<div class:list={['reveal', className]} data-reveal style={`--reveal-delay: ${delay}ms`}>
+  <slot />
+</div>
+
+<script>
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const pending = document.querySelectorAll<HTMLElement>('[data-reveal]:not([data-reveal-ready])');
+
+  if (reduceMotion || !('IntersectionObserver' in window)) {
+    pending.forEach((element) => {
+      element.dataset.revealReady = 'true';
+      element.dataset.revealed = 'true';
+    });
+  } else {
+    document.documentElement.classList.add('reveal-enabled');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const element = entry.target as HTMLElement;
+          element.dataset.revealed = 'true';
+          observer.unobserve(element);
+        });
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
+    );
+
+    pending.forEach((element) => {
+      element.dataset.revealReady = 'true';
+      observer.observe(element);
+    });
+  }
+</script>

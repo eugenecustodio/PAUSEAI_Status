@@ -1,0 +1,90 @@
+---
+import type { HealthCheck, HealthStatus } from '../../lib/health';
+
+interface Props {
+  check: HealthCheck;
+}
+
+const { check } = Astro.props;
+
+function statusLabel(status: HealthStatus): string {
+  return status === 'not_configured'
+    ? 'Not configured'
+    : status[0].toUpperCase() + status.slice(1);
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeZone: 'UTC',
+  }).format(new Date(value));
+}
+---
+
+<article class="health-row" data-health-status={check.status}>
+  <div>
+    <span class="status-pill">{statusLabel(check.status)}</span>
+    <h3>{check.label}</h3>
+  </div>
+  <p>{check.summary}</p>
+  <time datetime={check.checkedAt}>{formatDate(check.checkedAt)}</time>
+</article>
+
+<style>
+  .health-row {
+    display: grid;
+    grid-template-columns: minmax(210px, 0.6fr) minmax(0, 1.4fr) auto;
+    gap: 1.5rem;
+    align-items: center;
+    padding-block: 1.15rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .health-row:last-child {
+    border-bottom: 0;
+  }
+
+  .health-row h3,
+  .health-row p {
+    margin: 0;
+  }
+
+  .health-row p {
+    color: var(--color-muted);
+  }
+
+  .health-row time {
+    color: var(--color-dim);
+    font: 0.67rem var(--font-mono);
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--status-color);
+    font: 0.66rem var(--font-mono);
+  }
+
+  .status-pill::before {
+    width: 0.45rem;
+    height: 0.45rem;
+    border: 1px solid currentcolor;
+    border-radius: 50%;
+    background: color-mix(in srgb, currentcolor 35%, transparent);
+    content: '';
+  }
+
+  [data-health-status='operational'] { --status-color: var(--color-calm); }
+  [data-health-status='degraded'] { --status-color: var(--color-alert); }
+  [data-health-status='outage'] { --status-color: #ff8f8f; }
+  [data-health-status='unknown'] { --status-color: var(--color-focus); }
+  [data-health-status='not_configured'] { --status-color: var(--color-muted); }
+
+  @media (max-width: 850px) {
+    .health-row {
+      grid-template-columns: 1fr;
+      gap: 0.6rem;
+    }
+  }
+</style>

@@ -1,0 +1,294 @@
+---
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+import HealthCard from '../components/status/HealthCard.astro';
+import HealthRow from '../components/status/HealthRow.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import {
+  aggregateHealthStatus,
+  calculateProbeSuccessRate,
+  createFallbackSnapshot,
+  parseHealthHistory,
+  refreshHealthSnapshot,
+  type HealthHistory,
+  type HealthStatus,
+} from '../lib/health';
+import { withBase } from '../lib/site';
+
+const now = new Date();
+let snapshot = createFallbackSnapshot(now);
+let history: HealthHistory = { schemaVersion: 1, generatedAt: now.toISOString(), samples: [] };
+let dataRecovered = false;
+
+try {
+  const raw = JSON.parse(await readFile(resolve('public/status/current.json'), 'utf8')) as unknown;
+  snapshot = refreshHealthSnapshot(raw, now);
+} catch {
+  dataRecovered = true;
+}
+
+try {
+  const raw = JSON.parse(await readFile(resolve('public/status/history.json'), 'utf8')) as unknown;
+  history = parseHealthHistory(raw, now);
+} catch {
+  dataRecovered = true;
+}
+
+const successRate = calculateProbeSuccessRate(history);
+const overallLabel = statusLabel(snapshot.overallStatus);
+const dailyGroups = groupHistoryByDay(history);
+const manualChecks = snapshot.releaseEvidence.filter((check) => check.evidenceKind === 'manual');
+const releaseChecks = snapshot.releaseEvidence.filter((check) => check.evidenceKind === 'release');
+
+function statusLabel(status: HealthStatus): string {
+  return status === 'not_configured'
+    ? 'Not configured'
+    : status[0].toUpperCase() + status.slice(1);
+}
+
+function statusSymbol(status: HealthStatus): string {
+  if (status === 'operational') return '✓';
+  if (status === 'degraded') return '△';
+  if (status === 'outage') return '×';
+  if (status === 'not_configured') return '—';
+  return '?';
+}
+
+function overallSummary(status: HealthStatus): string {
+  if (status === 'operational') return 'All configured synthetic checks passed their latest evidence window.';
+  if (status === 'degraded') return 'At least one configured check needs attention; details remain separated below.';
+  if (status === 'outage') return 'At least one component reported a confirmed outage in the latest probe.';
+  if (status === 'not_configured') return 'Synthetic monitoring is not configured yet.';
+  return 'The latest runner could not establish a determinate system result.';
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(value)) + ' UTC';
+}
+
+function groupHistoryByDay(input: HealthHistory): Array<{
+  label: string;
+  samples: number;
+  status: HealthStatus;
+}> {
+  const groups = new Map<string, HealthStatus[]>();
+  for (const sample of input.samples) {
+    const day = sample.generatedAt.slice(0, 10);
+    groups.set(day, [...(groups.get(day) ?? []), sample.overallStatus]);
+  }
+  return [...groups.entries()].slice(-7).map(([day, statuses]) => ({
+    label: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00.000Z`)),
+    samples: statuses.length,
+    status: aggregateHealthStatus(statuses),
+  }));
+}
+---
+
+<BaseLayout
+  title="System Status"
+  description="Layered, synthetic operational evidence for PAUSE AI Auth, RLS, Edge Functions, Qwen guidance, cleanup, and release gates."
+>
+  <section class="status-hero shell" aria-labelledby="status-title">
+    <div>
+      <p class="eyebrow">Public system pulse</p>
+      <h1 id="status-title">Evidence with an honest clock.</h1>
+      <p class="lede">
+        A dedicated synthetic account checks the PAUSE backend. No teammate account, visitor browser,
+        or real notification is used.
+      </p>
+    </div>
+    <article class="overall-card" data-health-status={snapshot.overallStatus} aria-label={`Overall status: ${overallLabel}`}>
+      <div class="overall-topline">
+        <span class="status-symbol" aria-hidden="true">{statusSymbol(snapshot.overallStatus)}</span>
+        <span>Overall system evidence</span>
+      </div>
+      <strong>{overallLabel}</strong>
+      <p>
+        {snapshot.stale
+          ? 'The latest frequent evidence is stale, so current health is not assumed.'
+          : overallSummary(snapshot.overallStatus)}
+      </p>
+      <dl>
+        <div>
+          <dt>Generated</dt>
+          <dd><time datetime={snapshot.generatedAt}>{formatDate(snapshot.generatedAt)}</time></dd>
+        </div>
+        <div>
+          <dt>Probe success rate</dt>
+          <dd>{successRate.percentage === null ? 'Not enough history' : `${successRate.percentage}%`}</dd>
+        </div>
+      </dl>
+    </article>
+  </section>
+
+  {(snapshot.stale || dataRecovered) && (
+    <aside class="status-notice shell" role="status">
+      <span aria-hidden="true">!</span>
+      <p>
+        <strong>{dataRecovered ? 'Published status data was unavailable.' : 'Frequent evidence is older than two hours.'}</strong>
+        The dashboard is showing a safe unknown state instead of carrying forward a false green result.
+      </p>
+    </aside>
+  )}
+
+  <section class="status-section shell" aria-labelledby="live-title">
+    <div class="section-heading">
+      <div>
+        <p class="evidence-label">Live</p>
+        <h2 id="live-title">Backend availability</h2>
+      </div>
+      <p>Safe checks run every 30 minutes. “Live” means the latest scheduled sample, not continuous telemetry.</p>
+    </div>
+    <div class="health-grid">
+      {snapshot.checks.map((check) => <HealthCard check={check} />)}
+    </div>
+  </section>
+
+  <section class="status-section shell" aria-labelledby="daily-title">
+    <div class="section-heading">
+      <div>
+        <p class="evidence-label">Daily</p>
+        <h2 id="daily-title">AI and privacy lifecycle</h2>
+      </div>
+      <p>At most once per 24 hours: synthetic classification, digest guidance, zero retention, and cleanup.</p>
+    </div>
+    <div class="health-grid health-grid--three">
+      {snapshot.validationEvidence.map((check) => <HealthCard check={check} />)}
+    </div>
+  </section>
+
+  <section class="history-section shell" aria-labelledby="history-title">
+    <div class="section-heading">
+      <div>
+        <p class="evidence-label">Seven-day samples</p>
+        <h2 id="history-title">Probe history</h2>
+      </div>
+      <p>
+        {successRate.observed === 0
+          ? 'No determinate frequent samples exist yet.'
+          : `${successRate.successful} of ${successRate.observed} determinate samples were operational.`}
+        Unknown samples are excluded from the rate.
+      </p>
+    </div>
+    <div class="history-card">
+      {dailyGroups.length ? (
+        <ol class="history-days">
+          {dailyGroups.map((day) => (
+            <li data-health-status={day.status}>
+              <span class="history-bar" aria-hidden="true"></span>
+              <strong>{day.label}</strong>
+              <small>{day.samples} {day.samples === 1 ? 'sample' : 'samples'} · {statusLabel(day.status)}</small>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p class="empty-history">History begins after the first scheduled probe.</p>
+      )}
+      <div class="history-legend" aria-label="History status legend">
+        {(['operational', 'degraded', 'outage', 'unknown'] as const).map((status) => (
+          <span data-health-status={status}><i aria-hidden="true"></i>{statusLabel(status)}</span>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="status-section release-section shell" aria-labelledby="release-title">
+    <div class="section-heading">
+      <div>
+        <p class="evidence-label">Release</p>
+        <h2 id="release-title">VersionCode 4 evidence</h2>
+      </div>
+      <p>Point-in-time validation from the latest release gate. These checks are not presented as live monitoring.</p>
+    </div>
+    <div class="release-list">
+      {releaseChecks.map((check) => <HealthRow check={check} />)}
+    </div>
+  </section>
+
+  <section class="status-section manual-section shell" aria-labelledby="manual-title">
+    <div class="section-heading">
+      <div>
+        <p class="evidence-label">Manual pending</p>
+        <h2 id="manual-title">Physical Android and OEM QA</h2>
+      </div>
+      <p>Compilation and automation cannot prove real notification-listener behavior across manufacturers.</p>
+    </div>
+    <div class="release-list">
+      {manualChecks.map((check) => <HealthRow check={check} />)}
+    </div>
+  </section>
+
+  <section class="status-method shell" aria-labelledby="method-title">
+    <div>
+      <p class="eyebrow">How to read this</p>
+      <h2 id="method-title">A probe result, not an uptime promise.</h2>
+    </div>
+    <div>
+      <p>
+        Runner, DNS, timeout, or network ambiguity becomes <strong>Unknown</strong>. A confirmed component failure
+        can become <strong>Degraded</strong> or <strong>Outage</strong>. Frequent evidence goes stale after two hours;
+        daily Qwen evidence goes stale after 36 hours.
+      </p>
+      <a href={withBase('/status/current.json')}>Inspect the allowlisted snapshot <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .status-hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .65fr); gap: clamp(3rem, 8vw, 7rem); align-items: end; padding-block: clamp(7rem, 14vw, 11rem) 4rem; }
+  .status-hero h1 { max-width: 11ch; }
+  .status-hero .lede { max-width: 62ch; }
+  .overall-card { padding: 1.6rem; border: 1px solid var(--status-color, var(--color-line)); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--status-color, var(--color-privacy)) 7%, var(--color-surface)); }
+  .overall-topline { display: flex; gap: .65rem; align-items: center; color: var(--color-muted); font: .7rem/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: .07em; }
+  .status-symbol { display: grid; width: 1.6rem; height: 1.6rem; place-items: center; border: 1px solid currentcolor; border-radius: 50%; color: var(--status-color, var(--color-privacy)); }
+  .overall-card > strong { display: block; margin-block: 2rem .6rem; font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 450; letter-spacing: -.04em; }
+  .overall-card > p { color: var(--color-muted); }
+  .overall-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-line); }
+  .overall-card dt { color: var(--color-muted); font: .65rem var(--font-mono); text-transform: uppercase; }
+  .overall-card dd { margin: .4rem 0 0; font-size: .85rem; }
+  .status-notice { display: flex; gap: 1rem; align-items: center; margin-bottom: 3rem; padding: 1rem 1.25rem; border: 1px solid color-mix(in srgb, var(--color-alert) 45%, transparent); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-alert) 8%, var(--color-surface)); }
+  .status-notice > span { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid var(--color-alert); border-radius: 50%; color: var(--color-alert); font-family: var(--font-mono); }
+  .status-notice p { margin: 0; color: var(--color-muted); }
+  .status-notice strong { color: var(--color-ink); }
+  .status-section, .history-section { padding-block: 4.5rem; border-top: 1px solid var(--color-line); }
+  .section-heading { display: grid; grid-template-columns: 1fr minmax(280px, .7fr); gap: 2rem; align-items: end; margin-bottom: 2.5rem; }
+  .section-heading h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.5rem); letter-spacing: -.045em; }
+  .section-heading > p { max-width: 55ch; margin: 0; color: var(--color-muted); }
+  .evidence-label { margin-bottom: .65rem; color: var(--color-focus); font: .7rem var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+  .health-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .health-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  [data-health-status='operational'] { --status-color: var(--color-calm); }
+  [data-health-status='degraded'] { --status-color: var(--color-alert); }
+  [data-health-status='outage'] { --status-color: #ff8f8f; }
+  [data-health-status='unknown'] { --status-color: var(--color-focus); }
+  [data-health-status='not_configured'] { --status-color: var(--color-muted); }
+  .history-card { padding: clamp(1.2rem, 3vw, 2rem); border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
+  .history-days { display: grid; min-height: 180px; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .8rem; align-items: end; margin: 0; padding: 0; list-style: none; }
+  .history-days li { display: flex; min-width: 0; flex-direction: column; }
+  .history-bar { min-height: 26px; height: var(--history-height, 80px); max-height: 110px; margin-bottom: .8rem; border: 1px solid color-mix(in srgb, var(--status-color) 48%, transparent); border-radius: .5rem; background: color-mix(in srgb, var(--status-color) 18%, transparent); }
+  .history-days strong { font: .68rem var(--font-mono); }
+  .history-days small { overflow: hidden; color: var(--color-muted); font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
+  .history-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--color-line); }
+  .history-legend span { display: inline-flex; align-items: center; gap: .4rem; color: var(--color-muted); font: .62rem var(--font-mono); }
+  .history-legend i { width: .5rem; height: .5rem; border-radius: 50%; background: var(--status-color); }
+  .empty-history { min-height: 120px; display: grid; place-items: center; color: var(--color-muted); }
+  .release-list { border-block: 1px solid var(--color-line); }
+  .manual-section { margin-bottom: 4rem; }
+  .status-method { display: grid; grid-template-columns: .8fr 1.2fr; gap: 3rem; margin-bottom: 8rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--color-focus) 6%, var(--color-surface)); }
+  .status-method h2 { margin: 0; }
+  .status-method p { color: var(--color-muted); line-height: 1.75; }
+  .status-method a { color: var(--color-calm); font: .72rem var(--font-mono); }
+  @media (max-width: 850px) {
+    .status-hero, .section-heading, .status-method { grid-template-columns: 1fr; }
+    .health-grid, .health-grid--three { grid-template-columns: 1fr; }
+    .history-days { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 520px) {
+    .history-days { grid-template-columns: repeat(2, 1fr); }
+    .overall-card dl { grid-template-columns: 1fr; }
+  }
+</style>

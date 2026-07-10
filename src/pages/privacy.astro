@@ -1,0 +1,93 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Privacy"
+  description="The privacy boundaries behind the PAUSE AI app and this public status website."
+>
+  <section class="page-hero shell" aria-labelledby="privacy-title">
+      <p class="eyebrow">Privacy model</p>
+      <h1 id="privacy-title">A boundary should respect yours.</h1>
+      <p class="lede">
+        PAUSE is built to reduce interruption without becoming another place that reads, replies, or follows you around.
+      </p>
+  </section>
+
+  <section class="shell promise-grid" aria-label="Core privacy promises">
+      <article>
+        <span class="promise-number">01</span>
+        <h2>Not a messenger</h2>
+        <p>PAUSE does not send messages or auto-reply inside other apps. It brokers notification delivery.</p>
+      </article>
+      <article>
+        <span class="promise-number">02</span>
+        <h2>AI is optional</h2>
+        <p>Cloud AI requires an explicit account preference. Local policy remains available when it is off.</p>
+      </article>
+      <article>
+        <span class="promise-number">03</span>
+        <h2>Retention is controlled</h2>
+        <p>Preview retention is a visible setting. Zero-hour retention means synthetic health previews must remain null.</p>
+      </article>
+      <article>
+        <span class="promise-number">04</span>
+        <h2>Deletion is testable</h2>
+        <p>Cloud deletion is part of the daily synthetic lifecycle and is reported separately from availability.</p>
+      </article>
+  </section>
+
+  <section class="shell site-privacy" aria-labelledby="site-privacy-title">
+      <div>
+        <p class="eyebrow">This website</p>
+        <h2 id="site-privacy-title">Static by design</h2>
+      </div>
+      <div class="site-copy">
+        <p>
+          This public site has no analytics, advertising, contact form, account system, tracking pixel, or browser-side Supabase client.
+          It does not collect visitor data.
+        </p>
+        <p>
+          GitHub Actions runs a dedicated synthetic health account away from visitors. Only an allowlisted snapshot is published:
+          component state, evidence type, safe summary, timestamps, optional latency, and approved public error codes.
+        </p>
+        <p>
+          The snapshot never includes email addresses, user IDs, tokens, provider responses, exception text, notification content,
+          or secret values. A network-ambiguous run is labelled unknown—not rewritten as an outage or a false green check.
+        </p>
+      </div>
+  </section>
+
+  <section class="shell evidence-note" aria-labelledby="evidence-note-title">
+      <p class="eyebrow">Evidence language</p>
+      <h2 id="evidence-note-title">What the dashboard can—and cannot—prove</h2>
+      <p>
+        “Live” means a recent synthetic Auth, RLS, or Edge availability check. “Daily” means the last full Qwen and cleanup lifecycle.
+        “Release” records a verified build gate. “Manual pending” is work that still needs a physical Android device or OEM-specific review.
+        These are probe results, not a contractual uptime guarantee.
+      </p>
+  </section>
+</BaseLayout>
+
+<style>
+  .page-hero { padding-block: clamp(7rem, 16vw, 12rem) 4rem; max-width: 960px; }
+  .page-hero h1 { max-width: 12ch; }
+  .promise-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; padding-block: 2rem 8rem; }
+  .promise-grid article { min-height: 270px; padding: 2rem; border: 1px solid var(--color-line); background: var(--color-surface); }
+  .promise-grid article:nth-child(1) { border-radius: var(--radius-xl) 0 0 0; }
+  .promise-grid article:nth-child(2) { border-radius: 0 var(--radius-xl) 0 0; }
+  .promise-grid article:nth-child(3) { border-radius: 0 0 0 var(--radius-xl); }
+  .promise-grid article:nth-child(4) { border-radius: 0 0 var(--radius-xl) 0; }
+  .promise-number { color: var(--color-privacy); font: .78rem var(--font-mono); }
+  .promise-grid h2 { margin-top: 3.5rem; }
+  .promise-grid p, .site-copy p, .evidence-note p { max-width: 60ch; color: var(--color-muted); line-height: 1.75; }
+  .site-privacy { display: grid; grid-template-columns: .7fr 1.3fr; gap: 3rem; padding-block: 4rem 9rem; }
+  .site-copy { display: grid; gap: 1rem; }
+  .evidence-note { margin-bottom: 8rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--color-privacy) 8%, var(--color-surface)); }
+  @media (max-width: 700px) {
+    .promise-grid, .site-privacy { grid-template-columns: 1fr; }
+    .promise-grid article { border-radius: 0 !important; }
+    .promise-grid article:first-child { border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important; }
+    .promise-grid article:last-child { border-radius: 0 0 var(--radius-xl) var(--radius-xl) !important; }
+  }
+</style>

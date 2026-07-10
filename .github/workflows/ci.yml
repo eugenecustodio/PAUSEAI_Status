@@ -1,0 +1,68 @@
+name: Pull request quality gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pause-status-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Static site, safety, and browser checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use the project Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Validate committed public health fallback
+        run: npm run health:validate
+
+      - name: Check Astro and TypeScript
+        run: npm run check
+
+      - name: Lint source
+        run: npm run lint
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Scan source for credential material
+        run: npm run security:scan
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Scan built output for credential material
+        run: npm run security:scan
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run desktop and mobile smoke tests
+        run: npm run test:e2e
+
+      - name: Upload browser report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7

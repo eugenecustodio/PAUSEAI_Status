@@ -1,0 +1,24 @@
+---
+import { withBase } from '../lib/site';
+---
+
+<figure class="product-video">
+  <div class="video-frame">
+    <video
+      controls
+      playsinline
+      preload="none"
+      poster={withBase('/media/pause-app-video-poster.png')}
+      aria-label="PAUSE AI 30-second product film"
+    >
+      <source src={withBase('/media/pause-app-video.mp4')} type="video/mp4" />
+      Your browser does not support embedded video. You can
+      <a href={withBase('/media/pause-app-video.mp4')}>open the PAUSE AI product film</a> instead.
+    </video>
+    <span class="video-duration" aria-hidden="true">00:30</span>
+  </div>
+  <figcaption>
+    <span>PAUSE AI application film</span>
+    <span>User-controlled playback · no autoplay audio</span>
+  </figcaption>
+</figure>

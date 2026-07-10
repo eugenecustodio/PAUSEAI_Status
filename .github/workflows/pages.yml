@@ -1,0 +1,136 @@
+name: Probe health and deploy Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17,47 * * * *'
+  workflow_dispatch:
+    inputs:
+      probe_mode:
+        description: Select a safe probe mode. Daily still observes its 24-hour guard.
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - frequent
+          - daily
+          - skip
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pause-status-pages
+  cancel-in-progress: false
+
+jobs:
+  probe-build-deploy:
+    name: Probe, preserve sanitized state, and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Use the project Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Restore prior sanitized health state
+        shell: bash
+        run: |
+          mkdir -p public/status "$RUNNER_TEMP/prior-status"
+          if git fetch --no-tags origin status-data:refs/remotes/origin/status-data; then
+            if git show refs/remotes/origin/status-data:current.json > "$RUNNER_TEMP/prior-status/current.json" \
+              && git show refs/remotes/origin/status-data:history.json > "$RUNNER_TEMP/prior-status/history.json"; then
+              cp "$RUNNER_TEMP/prior-status/current.json" public/status/current.json
+              cp "$RUNNER_TEMP/prior-status/history.json" public/status/history.json
+            fi
+          fi
+
+      - name: Run safe synthetic health probes
+        id: health_probe
+        continue-on-error: true
+        env:
+          PAUSE_SUPABASE_URL: ${{ secrets.PAUSE_SUPABASE_URL }}
+          PAUSE_SUPABASE_ANON_KEY: ${{ secrets.PAUSE_SUPABASE_ANON_KEY }}
+          PAUSE_HEALTH_EMAIL: ${{ secrets.PAUSE_HEALTH_EMAIL }}
+          PAUSE_HEALTH_PASSWORD: ${{ secrets.PAUSE_HEALTH_PASSWORD }}
+          PAUSE_DAILY_QWEN_ENABLED: ${{ vars.PAUSE_DAILY_QWEN_ENABLED || 'false' }}
+          PAUSE_PROBE_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.probe_mode || 'auto' }}
+        run: npm run health:probe
+
+      - name: Replace a crashed probe with an honest unknown snapshot
+        if: steps.health_probe.outcome != 'success'
+        run: npx tsx scripts/health/write-fallback.ts
+
+      - name: Validate strict public health schema and redaction
+        id: health_validation
+        continue-on-error: true
+        run: npm run health:validate
+
+      - name: Replace invalid public health data with an honest unknown snapshot
+        if: steps.health_validation.outcome != 'success'
+        run: |
+          npx tsx scripts/health/write-fallback.ts
+          npm run health:validate
+
+      - name: Run static quality gates
+        run: |
+          npm run check
+          npm run lint
+          npm run test
+          npm run security:scan
+
+      - name: Build production site
+        run: npm run build
+
+      - name: Verify built output contains no credential material
+        run: npm run security:scan
+
+      - name: Persist seven days of sanitized status state
+        shell: bash
+        run: |
+          STATUS_WORKTREE="$RUNNER_TEMP/status-data-worktree"
+          rm -rf "$STATUS_WORKTREE"
+          if git show-ref --verify --quiet refs/remotes/origin/status-data; then
+            git worktree add --detach "$STATUS_WORKTREE" refs/remotes/origin/status-data
+          else
+            git worktree add --detach "$STATUS_WORKTREE"
+            git -C "$STATUS_WORKTREE" switch --orphan status-data
+            git -C "$STATUS_WORKTREE" rm -rf .
+          fi
+          cp public/status/current.json "$STATUS_WORKTREE/current.json"
+          cp public/status/history.json "$STATUS_WORKTREE/history.json"
+          git -C "$STATUS_WORKTREE" config user.name "PAUSE health bot"
+          git -C "$STATUS_WORKTREE" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$STATUS_WORKTREE" add current.json history.json
+          if ! git -C "$STATUS_WORKTREE" diff --cached --quiet; then
+            git -C "$STATUS_WORKTREE" commit -m "chore(status): refresh sanitized health data"
+            git -C "$STATUS_WORKTREE" push origin HEAD:status-data
+          fi
+          git worktree remove "$STATUS_WORKTREE"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

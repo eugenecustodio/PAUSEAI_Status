@@ -1,0 +1,109 @@
+---
+import type { HealthCheck, HealthStatus } from '../../lib/health';
+
+interface Props {
+  check: HealthCheck;
+}
+
+const { check } = Astro.props;
+
+function statusLabel(status: HealthStatus): string {
+  return status === 'not_configured'
+    ? 'Not configured'
+    : status[0].toUpperCase() + status.slice(1);
+}
+
+function evidenceLabel(value: HealthCheck): string {
+  if (value.evidenceKind === 'manual') return 'Manual pending';
+  return value.evidenceKind[0].toUpperCase() + value.evidenceKind.slice(1);
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(value)) + ' UTC';
+}
+---
+
+<article class="health-card" data-health-status={check.status}>
+  <div class="health-card-head">
+    <span class="status-pill">{statusLabel(check.status)}</span>
+    <span class="evidence-label">{evidenceLabel(check)}</span>
+  </div>
+  <h3>{check.label}</h3>
+  <p>{check.summary}</p>
+  <div class="health-meta">
+    <time datetime={check.checkedAt}>{formatDate(check.checkedAt)}</time>
+    {check.latencyMs !== undefined && <span>{check.latencyMs} ms</span>}
+    {check.errorCode && <span>Code: {check.errorCode}</span>}
+  </div>
+</article>
+
+<style>
+  .health-card {
+    min-height: 245px;
+    padding: 1.5rem;
+    border: 1px solid var(--color-line);
+    border-top-color: var(--status-color);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+
+  .health-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .health-card h3 {
+    margin-block: 2rem 0.7rem;
+  }
+
+  .health-card > p {
+    color: var(--color-muted);
+    line-height: 1.65;
+  }
+
+  .health-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-top: 1.2rem;
+    color: var(--color-dim);
+    font: 0.65rem/1.5 var(--font-mono);
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--status-color);
+    font: 0.66rem var(--font-mono);
+  }
+
+  .status-pill::before {
+    width: 0.45rem;
+    height: 0.45rem;
+    border: 1px solid currentcolor;
+    border-radius: 50%;
+    background: color-mix(in srgb, currentcolor 35%, transparent);
+    content: '';
+  }
+
+  .evidence-label {
+    margin: 0;
+    color: var(--color-focus);
+    font: 0.7rem var(--font-mono);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  [data-health-status='operational'] { --status-color: var(--color-calm); }
+  [data-health-status='degraded'] { --status-color: var(--color-alert); }
+  [data-health-status='outage'] { --status-color: #ff8f8f; }
+  [data-health-status='unknown'] { --status-color: var(--color-focus); }
+  [data-health-status='not_configured'] { --status-color: var(--color-muted); }
+</style>

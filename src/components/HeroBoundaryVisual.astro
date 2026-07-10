@@ -1,0 +1,91 @@
+---
+const notificationCards = [
+  {
+    source: 'Team chat',
+    title: '4 notifications held',
+    detail: 'Available after your boundary',
+    tone: 'calm',
+  },
+  {
+    source: 'Calendar',
+    title: 'Starts in 10 minutes',
+    detail: 'Allowed by your policy',
+    tone: 'focus',
+  },
+  {
+    source: 'Account security',
+    title: 'Review requested',
+    detail: 'Allowed through now',
+    tone: 'alert',
+  },
+] as const;
+---
+
+<figure
+  class="boundary-visual"
+  aria-label="Incoming app notifications meet a receiver-controlled PAUSE boundary"
+>
+  <div class="boundary-grid" aria-hidden="true"></div>
+  <div class="visual-status">
+    <span class="status-pulse" aria-hidden="true"></span>
+    Boundary active
+  </div>
+
+  <div class="notification-stack" aria-hidden="true">
+    {notificationCards.map((card, index) => (
+      <div class:list={['notification-card', `notification-card--${card.tone}`]} style={`--card-order: ${index}`}>
+        <div class="notification-icon">{index + 1}</div>
+        <div>
+          <span>{card.source}</span>
+          <strong>{card.title}</strong>
+          <small>{card.detail}</small>
+        </div>
+      </div>
+    ))}
+  </div>
+
+  <div class="boundary-line" aria-hidden="true"><span>PAUSE</span></div>
+
+  <div class="visual-outcome" aria-hidden="true">
+    <span>Interruption policy</span>
+    <strong>Receiver controlled</strong>
+    <small>AI advises. Your rules decide.</small>
+  </div>
+</figure>
+
+<style>
+  .notification-card {
+    animation: card-arrival 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--card-order) * 110ms + 120ms);
+    will-change: transform, opacity;
+  }
+
+  .boundary-line {
+    animation: boundary-breathe 3.2s ease-in-out 900ms infinite;
+    will-change: opacity;
+  }
+
+  @keyframes card-arrival {
+    from {
+      opacity: 0;
+      transform: translate3d(-24px, 10px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes boundary-breathe {
+    0%, 100% { opacity: 0.72; }
+    50% { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .notification-card,
+    .boundary-line {
+      animation: none;
+      will-change: auto;
+    }
+  }
+</style>

@@ -254,7 +254,9 @@ const categories = [...new Set(updates.map((update) => update.data.category))].s
   }
 
   .update-card h2 a {
-    display: inline-block;
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
     text-decoration: none;
   }
 

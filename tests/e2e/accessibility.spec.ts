@@ -82,6 +82,22 @@ test('the compact navigation provides readable 44px mobile targets', async ({ pa
   expect(smallestLabel).toBeGreaterThanOrEqual(15);
 });
 
+test('every visible navigation link keeps a 44px target', async ({ page }) => {
+  await page.goto(homePath);
+
+  const mobileMenu = page.locator('.mobile-nav > summary');
+  if (await mobileMenu.isVisible()) await mobileMenu.click();
+
+  const targetHeights = await page.locator('nav a').evaluateAll((links) =>
+    links
+      .map((link) => link.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0)
+      .map((rect) => rect.height),
+  );
+  expect(targetHeights.length).toBeGreaterThan(0);
+  expect(Math.min(...targetHeights)).toBeGreaterThanOrEqual(44);
+});
+
 test('the complete homepage remains visible without JavaScript', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();

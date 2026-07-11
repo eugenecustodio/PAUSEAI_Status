@@ -1110,7 +1110,7 @@ p {
 .health-kicker {
   color: var(--color-dim);
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -1131,15 +1131,16 @@ p {
   border: 1px solid currentcolor;
   border-radius: 999px;
   color: var(--color-muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 1.25;
   white-space: nowrap;
 }
 
-.status-badge > span {
+.status-badge__dot {
   width: 7px;
   height: 7px;
+  flex: 0 0 auto;
   border-radius: 50%;
   background: currentcolor;
 }
@@ -1234,15 +1235,29 @@ p {
   padding-top: 1rem;
 }
 
+.health-preview__foot > div {
+  max-width: 46ch;
+}
+
 .health-preview__foot p {
   margin: 0;
   color: var(--color-dim);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   line-height: 1.55;
 }
 
-.health-preview__foot p:first-child {
-  max-width: 46ch;
+.health-preview__foot > p {
+  flex: 0 0 auto;
+}
+
+.health-preview__foot strong {
+  color: var(--color-soft);
+  font-weight: 700;
+}
+
+.health-preview__foot .health-stale-notice {
+  margin-top: 0.6rem;
+  color: var(--color-focus);
 }
 
 .health-preview > .text-link {
@@ -1298,7 +1313,7 @@ p {
 
 .journal-list article > a {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 44px;
   align-items: center;
   gap: 0.4rem;
   color: var(--color-calm);
@@ -1410,7 +1425,7 @@ p {
 
 .footer-nav-grid a {
   display: inline-flex;
-  min-height: 40px;
+  min-height: 44px;
   align-items: center;
   color: var(--color-muted);
   font-size: 0.82rem;
@@ -1888,7 +1903,7 @@ p {
   }
 
   .status-pulse,
-  .status-badge > span {
+  .status-badge__dot {
     forced-color-adjust: none;
   }
 }

@@ -5,9 +5,15 @@ import { getCollection } from 'astro:content';
 import HeroBoundaryVisual from '../components/HeroBoundaryVisual.astro';
 import ProductVideo from '../components/ProductVideo.astro';
 import Reveal from '../components/Reveal.astro';
+import FreshnessController from '../components/status/FreshnessController.astro';
 import { releaseEvidence } from '../data/release';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { createFallbackSnapshot, refreshHealthSnapshot, type HealthStatus } from '../lib/health';
+import {
+  createFallbackSnapshot,
+  parseHealthSnapshot,
+  refreshHealthSnapshot,
+  type HealthStatus,
+} from '../lib/health';
 import { SITE_SUBTITLE, withBase } from '../lib/site';
 
 const principles = [
@@ -40,12 +46,12 @@ const latestUpdates = (await getCollection('updates'))
   .slice(0, 2);
 
 const now = new Date();
-let health = createFallbackSnapshot(now);
+let recordedHealth = createFallbackSnapshot(now);
+let health = recordedHealth;
 try {
-  health = refreshHealthSnapshot(
-    JSON.parse(await readFile(resolve('public/status/current.json'), 'utf8')) as unknown,
-    now,
-  );
+  const raw = JSON.parse(await readFile(resolve('public/status/current.json'), 'utf8')) as unknown;
+  recordedHealth = parseHealthSnapshot(raw);
+  health = refreshHealthSnapshot(raw, now);
 } catch {
   // The safe fallback reports unknown rather than carrying an old green state forward.
 }
@@ -73,6 +79,27 @@ function formatTimestamp(value: string): string {
     timeStyle: 'short',
     timeZone: 'UTC',
   }).format(new Date(value))} UTC`;
+}
+
+function currentHealthSummary(
+  currentStatus: HealthStatus,
+  recordedStatus: HealthStatus,
+  stale: boolean,
+): string {
+  if (stale) {
+    return `Current health is unknown because the latest live check is older than two hours. The last recorded result was ${statusLabel(recordedStatus).toLowerCase()}.`;
+  }
+  if (currentStatus === 'operational') {
+    return 'Every configured live component passed its latest synthetic check.';
+  }
+  if (currentStatus === 'degraded') {
+    return 'A live component responded but did not satisfy its full operating contract.';
+  }
+  if (currentStatus === 'outage') {
+    return 'A live component returned confirmed evidence of an outage.';
+  }
+  if (currentStatus === 'not_configured') return 'Live synthetic monitoring is not configured.';
+  return 'The latest live check could not establish a reliable current result.';
 }
 ---
 
@@ -265,17 +292,27 @@ function formatTimestamp(value: string): string {
       <article
         class="health-preview"
         data-health-preview
-        data-health-status={health.overallStatus}
+        data-status-freshness-root
+        data-generated-at={recordedHealth.generatedAt}
+        data-recorded-status={recordedHealth.overallStatus}
+        data-current-status={health.overallStatus}
         aria-labelledby="health-preview-title"
       >
         <div class="health-preview__head">
           <div>
-            <span class="health-kicker">Latest scheduled sample</span>
+            <span class="health-kicker">
+              Current live state · <span data-current-freshness-label>{health.stale ? 'Stale' : 'Current'}</span>
+            </span>
             <h3 id="health-preview-title">System evidence</h3>
           </div>
-          <span class="status-badge" data-health-status={health.overallStatus}>
-            <span aria-hidden="true"></span>
-            {statusLabel(health.overallStatus)}
+          <span
+            class="status-badge"
+            data-current-status
+            data-health-status={health.overallStatus}
+            aria-label={`Current system status: ${statusLabel(health.overallStatus)}`}
+          >
+            <span class="status-badge__dot" aria-hidden="true"></span>
+            <span data-current-status-label>{statusLabel(health.overallStatus)}</span>
           </span>
         </div>
         <ul class="health-layers">
@@ -296,11 +333,17 @@ function formatTimestamp(value: string): string {
           </li>
         </ul>
         <div class="health-preview__foot">
-          <p data-health-freshness>
-            {health.stale ? 'Frequent evidence is stale; current health is not assumed.' : 'Frequent evidence is within its freshness window.'}
-          </p>
+          <div>
+            <p data-current-status-summary>
+              {currentHealthSummary(health.overallStatus, recordedHealth.overallStatus, health.stale)}
+            </p>
+            <p class="health-stale-notice" data-stale-notice hidden={!health.stale} role="status">
+              Freshness expired. The recorded result is preserved, but it is not presented as current health.
+            </p>
+          </div>
           <p>
-            Checked <time data-health-generated-at datetime={health.generatedAt}>{formatTimestamp(health.generatedAt)}</time>
+            Latest recorded result: <strong>{statusLabel(recordedHealth.overallStatus)}</strong><br />
+            Checked <time datetime={recordedHealth.generatedAt}>{formatTimestamp(recordedHealth.generatedAt)}</time>
           </p>
         </div>
         <a class="text-link" href={withBase('/status/')}>
@@ -349,4 +392,5 @@ function formatTimestamp(value: string): string {
       </Reveal>
     </div>
   </section>
+  <FreshnessController />
 </BaseLayout>

@@ -100,6 +100,12 @@ jobs:
       - name: Verify built output contains no credential material
         run: npm run security:scan
 
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run integrated desktop and mobile browser checks
+        run: npm run test:e2e
+
       - name: Persist seven days of sanitized status state
         shell: bash
         run: |

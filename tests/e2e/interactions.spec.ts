@@ -112,6 +112,28 @@ test('status uses explicit state text and separates each evidence layer', async 
   await expect(main).toContainText(/not (?:(?:a|an) )?(?:contractual )?uptime(?: promise| guarantee)?/i);
 });
 
+test('mobile status keeps every live-component evidence label readable', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto(`${projectBase}/status/`);
+
+  const labels = page.locator('.component-summary small');
+  await expect(labels).toHaveCount(4);
+  const readability = await labels.evaluateAll((items) =>
+    items.map((item) => ({
+      text: item.textContent?.trim(),
+      clipped: item.scrollWidth > item.clientWidth || item.scrollHeight > item.clientHeight,
+      whiteSpace: getComputedStyle(item).whiteSpace,
+    })),
+  );
+  expect(readability.map((item) => item.text)).toEqual([
+    'Supabase Auth gateway',
+    'Synthetic health account',
+    'Database and Row Level Security',
+    'Edge Function availability',
+  ]);
+  expect(readability.every((item) => !item.clipped && item.whiteSpace !== 'nowrap')).toBe(true);
+});
+
 test('status freshness expires locally without erasing the latest recorded result', async ({ page }) => {
   await page.goto(`${projectBase}/status/`);
   const root = page.locator('[data-status-freshness-root]');
@@ -137,4 +159,95 @@ test('status freshness expires locally without erasing the latest recorded resul
   await expect(root.locator('[data-current-status-summary]')).toContainText(/last recorded result was operational/i);
   await expect(latestResult).toBeVisible();
   await expect(root.locator('[data-stale-notice]')).toBeVisible();
+});
+
+test('homepage freshness expires locally without hiding its latest recorded evidence', async ({ page }) => {
+  await page.goto(`${projectBase}/`, { waitUntil: 'networkidle' });
+  const root = page.locator('[data-health-preview][data-status-freshness-root]');
+  const currentLabel = root.locator('[data-current-status-label]');
+  const recordedResult = root.getByText(/Latest recorded result:/).locator('strong');
+  const browserRequests: string[] = [];
+
+  page.on('request', (request) => {
+    if (request.resourceType() === 'fetch' || request.resourceType() === 'xhr') {
+      browserRequests.push(request.url());
+    }
+  });
+
+  await root.evaluate((element) => {
+    element.setAttribute('data-generated-at', new Date(Date.now() - 119 * 60_000).toISOString());
+    element.setAttribute('data-recorded-status', 'operational');
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(root).toHaveAttribute('data-current-freshness', 'fresh');
+  await expect(currentLabel).toHaveText('Operational');
+  await expect(recordedResult).toHaveText('Operational');
+  await expect(root.locator('[data-stale-notice]')).toBeHidden();
+
+  await root.evaluate((element) => {
+    element.setAttribute('data-generated-at', new Date(Date.now() - 121 * 60_000).toISOString());
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(root).toHaveAttribute('data-current-freshness', 'stale');
+  await expect(currentLabel).toHaveText('Unknown');
+  await expect(root.locator('[data-current-status-summary]')).toContainText(
+    /last recorded result was operational/i,
+  );
+  await expect(recordedResult).toHaveText('Operational');
+  await expect(root.locator('[data-stale-notice]')).toBeVisible();
+  expect(browserRequests, 'Freshness rollover must not make a browser request').toEqual([]);
+});
+
+test('the canonical versionCode 5 release facts and external-link notices stay aligned', async ({
+  page,
+}) => {
+  await page.goto(`${projectBase}/`);
+  const proof = page.locator('.proof-band');
+
+  await expect(proof).toContainText('429 tests');
+  await expect(proof).toContainText('37 automated suites passed for versionCode 5');
+  await expect(proof).toContainText('53 tests');
+  await expect(proof).toContainText('9 functions');
+  await expect(proof).toContainText('Expo SDK 56');
+  await expect(proof).toContainText('Expo Doctor passed 21 of 21 project checks');
+
+  const buildLink = proof.getByRole('link', { name: /Inspect build \(opens in a new tab\)/i });
+  await expect(buildLink).toHaveAttribute(
+    'href',
+    'https://expo.dev/accounts/anothergenee/projects/pause-boundary-broker/builds/8b4b2bf3-4daf-491f-a368-bdc08c98590a',
+  );
+  await expect(buildLink).toHaveAttribute('target', '_blank');
+  await expect(buildLink).toHaveAttribute('rel', 'noreferrer');
+
+  await page.goto(`${projectBase}/status/`);
+  await expect(
+    page.getByRole('heading', { level: 2, name: 'PAUSE 0.1.0 · versionCode 5.' }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: /Inspect the EAS build \(opens in a new tab\)/i }),
+  ).toHaveAttribute('target', '_blank');
+});
+
+test('the install manifest and standard icons remain base-safe and loadable', async ({ page, request }) => {
+  await page.goto(`${projectBase}/`);
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    'href',
+    `${projectBase}/site.webmanifest`,
+  );
+
+  const manifestResponse = await request.get(`${projectBase}/site.webmanifest`);
+  expect(manifestResponse.ok()).toBe(true);
+  const manifest = await manifestResponse.json();
+  expect(manifest.start_url).toBe(`${projectBase}/`);
+  expect(manifest.icons).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ src: `${projectBase}/icon-192.png`, sizes: '192x192' }),
+      expect.objectContaining({ src: `${projectBase}/icon-512.png`, sizes: '512x512' }),
+    ]),
+  );
+
+  for (const icon of ['icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'favicon.svg']) {
+    const response = await request.get(`${projectBase}/${icon}`);
+    expect(response.ok(), `${icon} should load beneath the project base`).toBe(true);
+  }
 });

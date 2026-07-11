@@ -403,7 +403,7 @@ function groupHistoryByDay(input: HealthHistory): DaySummary[] {
 
   .status-intro h1 em { display: block; color: var(--color-focus); font-style: normal; }
   .status-intro > p:not(.eyebrow) { max-width: 48ch; color: var(--color-muted); font-size: 1.02rem; }
-  .status-link { display: inline-flex; gap: .6rem; align-items: center; color: var(--color-calm); font: .72rem var(--font-mono); text-decoration: none; }
+  .status-link { display: inline-flex; min-height: 44px; gap: .6rem; align-items: center; color: var(--color-calm); font: .75rem var(--font-mono); text-decoration: none; }
   .status-link span { color: var(--color-focus); }
 
   .signal-card {
@@ -438,13 +438,13 @@ function groupHistoryByDay(input: HealthHistory): DaySummary[] {
   .signal-card > p:not(.stale-alert) { max-width: 57ch; margin-bottom: 1.25rem; color: var(--color-muted); }
   .signal-facts { display: grid; grid-template-columns: .85fr 1.45fr 1fr; gap: .7rem; margin: 0; padding-block: 1rem; border-block: 1px solid var(--color-line); }
   .signal-facts div { min-width: 0; }
-  .signal-facts dt { color: var(--color-dim); font: .58rem/1.4 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+  .signal-facts dt { color: var(--color-dim); font: .66rem/1.4 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
   .signal-facts dd { overflow-wrap: anywhere; margin: .32rem 0 0; color: var(--color-soft); font-size: .75rem; line-height: 1.45; }
   .component-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .48rem; margin-top: 1rem; }
   .component-summary > div { display: grid; min-width: 0; grid-template-columns: auto 1fr; column-gap: .48rem; align-items: center; padding: .58rem .65rem; border: 1px solid var(--color-line); border-radius: .8rem; background: rgba(0, 0, 0, .12); }
   .component-summary > div > span { width: .4rem; height: .4rem; grid-row: 1 / 3; border-radius: 50%; background: var(--status-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-color) 10%, transparent); }
-  .component-summary small { overflow: hidden; color: var(--color-dim); font: .56rem/1.3 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
-  .component-summary strong { color: var(--status-color); font-size: .68rem; font-weight: 500; }
+  .component-summary small { overflow: hidden; color: var(--color-dim); font: .66rem/1.3 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+  .component-summary strong { color: var(--status-color); font-size: .72rem; font-weight: 500; }
   .stale-alert { margin: 1rem 0 0; padding: .75rem .85rem; border: 1px solid color-mix(in srgb, var(--color-focus) 28%, transparent); border-radius: .8rem; background: color-mix(in srgb, var(--color-focus) 7%, transparent); color: var(--color-soft); font-size: .75rem; }
 
   .data-notice, .lane-note { display: flex; gap: 1rem; align-items: center; padding: 1rem 1.2rem; border: 1px solid color-mix(in srgb, var(--color-focus) 30%, transparent); border-radius: 1rem; background: color-mix(in srgb, var(--color-focus) 6%, var(--color-surface)); }
@@ -458,7 +458,7 @@ function groupHistoryByDay(input: HealthHistory): DaySummary[] {
   .section-heading--compact { margin-bottom: 2rem; }
   .section-heading h2 { max-width: 15ch; margin: 0; font-size: clamp(2.15rem, 5vw, 4.4rem); font-weight: 480; letter-spacing: -.055em; line-height: 1; }
   .section-heading > p { max-width: 56ch; margin: 0; color: var(--color-muted); }
-  .section-heading > p a { display: inline-block; margin-top: .7rem; color: var(--color-calm); font: .7rem var(--font-mono); }
+  .section-heading > p a { display: inline-flex; min-height: 44px; align-items: center; margin-top: .35rem; color: var(--color-calm); font: .75rem var(--font-mono); }
   .evidence-label { margin-bottom: .7rem; color: var(--color-focus); font: .67rem var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
 
   .evidence-lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--color-line); border-radius: 1.4rem; background: var(--color-surface); }
@@ -486,9 +486,9 @@ function groupHistoryByDay(input: HealthHistory): DaySummary[] {
   .segment--unknown { background: var(--color-focus); }
   .history-copy strong, .history-copy small { display: block; }
   .history-copy strong { color: var(--status-color); font-size: .78rem; }
-  .history-copy small { margin-top: .16rem; color: var(--color-dim); font-size: .64rem; }
+  .history-copy small { margin-top: .16rem; color: var(--color-dim); font-size: .68rem; }
   .history-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; padding: 1rem .85rem 0; border-top: 1px solid var(--color-line); }
-  .history-legend span { display: inline-flex; align-items: center; gap: .4rem; color: var(--color-muted); font: .62rem var(--font-mono); }
+  .history-legend span { display: inline-flex; align-items: center; gap: .4rem; color: var(--color-muted); font: .7rem var(--font-mono); }
   .history-legend i { width: .45rem; height: .45rem; border-radius: 50%; background: var(--status-color); }
   .empty-history { min-height: 110px; display: grid; place-items: center; margin: 0; color: var(--color-muted); }
 
@@ -497,7 +497,7 @@ function groupHistoryByDay(input: HealthHistory): DaySummary[] {
   .status-method { display: grid; grid-template-columns: .8fr 1.2fr; gap: 3rem; margin-bottom: 7rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--color-line); border-radius: 1.6rem; background: linear-gradient(135deg, color-mix(in srgb, var(--color-focus) 7%, var(--color-surface)), var(--color-surface)); }
   .status-method h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.4rem); letter-spacing: -.05em; }
   .status-method p { color: var(--color-muted); line-height: 1.75; }
-  .status-method a { color: var(--color-calm); font: .72rem var(--font-mono); }
+  .status-method a { display: inline-flex; min-height: 44px; align-items: center; color: var(--color-calm); font: .75rem var(--font-mono); }
 
   [data-health-status='operational'] { --status-color: var(--color-calm); }
   [data-health-status='degraded'] { --status-color: var(--color-alert); }
@@ -528,19 +528,20 @@ function groupHistoryByDay(input: HealthHistory): DaySummary[] {
   @media (max-width: 520px) {
     .status-hero { width: min(calc(100% - 24px), var(--shell)); }
     .signal-card { padding: 1.05rem; border-radius: 1.25rem; }
-    .signal-card__topline { font-size: .58rem; }
+    .signal-card__topline { align-items: flex-start; font-size: .7rem; letter-spacing: .04em; }
     .signal-state { margin-block: 1rem .5rem; }
     .signal-state strong { font-size: 2.15rem; }
     .signal-symbol { width: 2.25rem; height: 2.25rem; }
-    .signal-card > p:not(.stale-alert) { margin-bottom: .9rem; font-size: .78rem; line-height: 1.5; }
-    .signal-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; padding-block: .75rem; }
-    .signal-facts dt { font-size: .5rem; }
-    .signal-facts dd { font-size: .62rem; }
-    .component-summary { margin-top: .75rem; }
-    .component-summary > div { padding: .45rem .5rem; }
-    .component-summary small { font-size: .5rem; }
-    .component-summary strong { font-size: .58rem; }
-    .stale-alert { font-size: .67rem; }
+    .signal-card > p:not(.stale-alert) { margin-bottom: .9rem; font-size: .82rem; line-height: 1.55; }
+    .signal-facts { grid-template-columns: 1fr; gap: .7rem; padding-block: .8rem; }
+    .signal-facts div { display: grid; grid-template-columns: minmax(7.5rem, .8fr) minmax(0, 1.2fr); gap: .75rem; align-items: start; }
+    .signal-facts dt { font-size: .66rem; }
+    .signal-facts dd { margin-top: 0; font-size: .74rem; }
+    .component-summary { grid-template-columns: 1fr; margin-top: .75rem; }
+    .component-summary > div { padding: .58rem .62rem; }
+    .component-summary small { overflow: visible; font-size: .66rem; text-overflow: clip; white-space: normal; }
+    .component-summary strong { font-size: .7rem; }
+    .stale-alert { font-size: .75rem; line-height: 1.5; }
     .evidence-lanes { grid-template-columns: 1fr; }
     .evidence-lanes article { border-right: 0; border-bottom: 1px solid var(--color-line); }
     .evidence-lanes article:nth-child(3) { border-bottom: 1px solid var(--color-line); }

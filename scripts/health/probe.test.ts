@@ -7,6 +7,7 @@ const USER_ID = '11111111-1111-4111-8111-111111111111';
 const DEVICE_ID = '22222222-2222-4222-8222-222222222222';
 const EVENT_ID = '33333333-3333-4333-8333-333333333333';
 const DIGEST_ID = '44444444-4444-4444-8444-444444444444';
+const PRESET_ID = '99999999-9999-4999-8999-999999999999';
 const BOUNDARY_ID = '88888888-8888-4888-8888-888888888888';
 
 const configuredEnvironment: ProbeEnvironment = {
@@ -87,6 +88,7 @@ describe('synthetic health probes', () => {
       status: 'degraded',
       errorCode: 'qwen_fallback',
     });
+    expect(snapshot.overallStatus).toBe('operational');
     expect(snapshot.validationEvidence.find((check) => check.id === 'qwen_digest')?.status).toBe('operational');
     expect(snapshot.validationEvidence.find((check) => check.id === 'privacy_cleanup')?.status).toBe('operational');
 
@@ -116,7 +118,9 @@ describe('synthetic health probes', () => {
       'operational',
     ]);
     expect(fetcher.calls.some((call) => call.startsWith('POST ') && call.includes('/rest/v1/boundary_modes'))).toBe(true);
+    expect(fetcher.calls.some((call) => call.startsWith('POST ') && call.includes('/rest/v1/boundary_presets'))).toBe(true);
     expect(fetcher.calls.some((call) => call.includes('/rest/v1/boundary_modes?select=id&limit=1'))).toBe(true);
+    expect(fetcher.calls.some((call) => call.includes('/rest/v1/boundary_presets?select=id&limit=1'))).toBe(true);
   });
 
   it('reports Qwen model, zero-retention, and cleanup failures without publishing provider data', async () => {
@@ -147,8 +151,23 @@ describe('synthetic health probes', () => {
       status: 'outage',
       errorCode: 'cleanup_failed',
     });
-    expect(cleanupFailure.overallStatus).toBe('outage');
+    expect(cleanupFailure.overallStatus).toBe('operational');
     expect(JSON.stringify(cleanupFailure)).not.toMatch(/unexpected-provider-model|project checkpoint|11111111/i);
+  });
+
+  it('fails daily cleanup evidence if a synthetic account preset survives deletion', async () => {
+    const environment = { ...configuredEnvironment, dailyQwenEnabled: true, mode: 'daily' as const };
+    const snapshot = await runHealthProbe(environment, null, {
+      now: () => NOW,
+      fetch: makeLifecycleFetcher({ retainedPreset: true }),
+      randomUuid: uuidSequence(),
+    });
+
+    expect(snapshot.validationEvidence.find((check) => check.id === 'privacy_cleanup')).toMatchObject({
+      status: 'outage',
+      errorCode: 'cleanup_failed',
+    });
+    expect(snapshot.overallStatus).toBe('operational');
   });
 });
 
@@ -194,6 +213,7 @@ type LifecycleOptions = {
   retainedPreview?: boolean;
   cleanupStatus?: number;
   brokerState?: string;
+  retainedPreset?: boolean;
 };
 
 function makeLifecycleFetcher(options: LifecycleOptions): typeof fetch & { calls: string[] } {
@@ -215,6 +235,9 @@ function makeLifecycleFetcher(options: LifecycleOptions): typeof fetch & { calls
       const body = JSON.parse(String(init?.body)) as { cloud_ai_enabled: boolean };
       cloudAiEnabled = body.cloud_ai_enabled;
       return jsonResponse([{ cloud_ai_enabled: cloudAiEnabled, notification_retention_hours: 0 }]);
+    }
+    if (url.includes('/rest/v1/boundary_presets?select=id') && method === 'POST') {
+      return jsonResponse([{ id: PRESET_ID }]);
     }
     if (url.includes('/rest/v1/boundary_modes?select=id') && method === 'POST') {
       return jsonResponse([{ id: BOUNDARY_ID }]);
@@ -265,6 +288,9 @@ function makeLifecycleFetcher(options: LifecycleOptions): typeof fetch & { calls
     }
     if (url.includes('/rest/v1/profiles?select=cloud_ai_enabled')) {
       return jsonResponse([{ cloud_ai_enabled: cloudAiEnabled }]);
+    }
+    if (url.includes('/rest/v1/boundary_presets?select=id&limit=1')) {
+      return jsonResponse(deleted && !options.retainedPreset ? [] : [{ id: PRESET_ID }]);
     }
     if (
       url.includes('/rest/v1/device_installations?') ||

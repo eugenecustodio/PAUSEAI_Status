@@ -8,18 +8,9 @@ import {
   type HealthStatus,
   type PublicErrorCode,
 } from '../../src/lib/health.ts';
+import { edgeFunctions } from '../../src/data/release.ts';
 
-export const EDGE_FUNCTIONS = [
-  'classify-notification',
-  'delete-account',
-  'delete-cloud-data',
-  'generate-digest',
-  'manual-override',
-  'register-device',
-  'register-push-token',
-  'request-account-deletion',
-  'update-monitoring-rules',
-] as const;
+export const EDGE_FUNCTIONS = edgeFunctions;
 
 export type ProbeMode = 'auto' | 'frequent' | 'daily' | 'skip';
 
@@ -104,7 +95,7 @@ export async function runHealthProbe(
     return buildHealthSnapshot({
       generatedAt,
       checks: previous.checks,
-      releaseEvidence: previous.releaseEvidence,
+      releaseEvidence: createReleaseEvidence(),
       validationEvidence: environment.dailyQwenEnabled
         ? previous.validationEvidence
         : createPendingValidation(generatedAt, false),
@@ -365,6 +356,7 @@ async function runDailyProbe(
   try {
     await setZeroRetention(environment, session, dependencies);
     await setCloudAi(environment, session, dependencies, true);
+    await createSyntheticPreset(environment, session, dependencies);
     await createSyntheticBoundary(environment, session, dependencies);
     const deviceId = await registerSyntheticDevice(environment, session, dependencies);
     await registerSyntheticRule(environment, session, deviceId, dependencies);
@@ -430,6 +422,41 @@ async function runDailyProbe(
   }
 
   return [classificationCheck, digestCheck, cleanupCheck];
+}
+
+async function createSyntheticPreset(
+  environment: ProbeEnvironment,
+  session: AuthSession,
+  dependencies: ProbeDependencies,
+): Promise<void> {
+  const response = await requestJson(
+    environment,
+    session,
+    '/rest/v1/boundary_presets?select=id',
+    {
+      method: 'POST',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({
+        user_id: session.userId,
+        name: 'Scheduled health preset',
+        duration_minutes: 30,
+        policy_json: {
+          mode: 'quiet',
+          allowSecurityAlerts: false,
+          allowCalendarAlerts: false,
+          allowTrustedKeywords: false,
+          maxInterruptionsPerHour: 0,
+        },
+      }),
+    },
+    dependencies,
+    'classification',
+  );
+  const row = Array.isArray(response) && response.length === 1 ? response[0] : null;
+  const presetId = row ? readString(row, 'id') : null;
+  if (!presetId || !isUuid(presetId)) {
+    throw new ProbeFailure('classification', 'degraded', 'response_invalid');
+  }
 }
 
 async function setZeroRetention(
@@ -736,7 +763,7 @@ async function cleanupSyntheticData(
   }
 
   if (!deletionSucceeded || !disableSucceeded) throw new ProbeFailure('cleanup', 'outage', 'cleanup_failed');
-  const [profileRows, deviceRows, ruleRows, boundaryRows, eventRows, digestRows] = await Promise.all([
+  const [profileRows, deviceRows, ruleRows, presetRows, boundaryRows, eventRows, digestRows] = await Promise.all([
     requestJson(
       environment,
       session,
@@ -747,12 +774,13 @@ async function cleanupSyntheticData(
     ),
     requestJson(environment, session, '/rest/v1/device_installations?select=id&limit=1', { method: 'GET' }, dependencies, 'cleanup'),
     requestJson(environment, session, '/rest/v1/monitored_app_rules?select=id&limit=1', { method: 'GET' }, dependencies, 'cleanup'),
+    requestJson(environment, session, '/rest/v1/boundary_presets?select=id&limit=1', { method: 'GET' }, dependencies, 'cleanup'),
     requestJson(environment, session, '/rest/v1/boundary_modes?select=id&limit=1', { method: 'GET' }, dependencies, 'cleanup'),
     requestJson(environment, session, '/rest/v1/notification_events?select=id&limit=1', { method: 'GET' }, dependencies, 'cleanup'),
     requestJson(environment, session, '/rest/v1/digests?select=id&limit=1', { method: 'GET' }, dependencies, 'cleanup'),
   ]);
   const profile = Array.isArray(profileRows) && profileRows.length === 1 ? profileRows[0] : null;
-  const empty = [deviceRows, ruleRows, boundaryRows, eventRows, digestRows].every(
+  const empty = [deviceRows, ruleRows, presetRows, boundaryRows, eventRows, digestRows].every(
     (rows) => Array.isArray(rows) && rows.length === 0,
   );
   if (!profile || readBoolean(profile, 'cloud_ai_enabled') !== false || !empty) {

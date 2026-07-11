@@ -89,7 +89,7 @@ test('status uses explicit state text and separates each evidence layer', async 
   await page.goto(`${projectBase}/status/`);
   const main = page.locator('main#main-content');
 
-  for (const label of ['Live', 'Daily', 'Release', 'Manual pending']) {
+  for (const label of ['Live', 'Daily', 'Release', 'Manual']) {
     await expect(main.getByText(label, { exact: true }).first()).toBeVisible();
   }
 
@@ -110,4 +110,31 @@ test('status uses explicit state text and separates each evidence layer', async 
 
   await expect(main).toContainText(/probe success rate/i);
   await expect(main).toContainText(/not (?:(?:a|an) )?(?:contractual )?uptime(?: promise| guarantee)?/i);
+});
+
+test('status freshness expires locally without erasing the latest recorded result', async ({ page }) => {
+  await page.goto(`${projectBase}/status/`);
+  const root = page.locator('[data-status-freshness-root]');
+  const currentLabel = root.locator('[data-current-status-label]');
+  const latestResult = root.locator('.signal-facts').getByText('Operational', { exact: true });
+
+  await root.evaluate((element) => {
+    element.setAttribute('data-generated-at', new Date(Date.now() - 119 * 60_000).toISOString());
+    element.setAttribute('data-recorded-status', 'operational');
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(root).toHaveAttribute('data-current-freshness', 'fresh');
+  await expect(currentLabel).toHaveText('Operational');
+  await expect(latestResult).toBeVisible();
+  await expect(root.locator('[data-stale-notice]')).toBeHidden();
+
+  await root.evaluate((element) => {
+    element.setAttribute('data-generated-at', new Date(Date.now() - 121 * 60_000).toISOString());
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect(root).toHaveAttribute('data-current-freshness', 'stale');
+  await expect(currentLabel).toHaveText('Unknown');
+  await expect(root.locator('[data-current-status-summary]')).toContainText(/last recorded result was operational/i);
+  await expect(latestResult).toBeVisible();
+  await expect(root.locator('[data-stale-notice]')).toBeVisible();
 });

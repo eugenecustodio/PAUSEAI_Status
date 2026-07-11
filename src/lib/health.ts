@@ -1,3 +1,5 @@
+import { currentRelease } from '../data/release.ts';
+
 export const HEALTH_SCHEMA_VERSION = 1 as const;
 
 export const HEALTH_STATUSES = ['operational', 'degraded', 'outage', 'unknown', 'not_configured'] as const;
@@ -127,7 +129,7 @@ export const CHECK_DEFINITIONS = {
       degraded: 'The classifier used its deterministic safety fallback instead of Qwen.',
       outage: 'The daily classification endpoint returned a confirmed service outage.',
       unknown: 'Daily Qwen classification has not been verified.',
-      not_configured: 'Daily Qwen verification is pending credential rotation.',
+      not_configured: 'Daily Qwen verification is disabled; no current daily result is available.',
     },
   },
   qwen_digest: {
@@ -138,7 +140,7 @@ export const CHECK_DEFINITIONS = {
       degraded: 'Digest generation used deterministic guidance instead of Qwen.',
       outage: 'The daily digest endpoint returned a confirmed service outage.',
       unknown: 'Daily Qwen digest guidance has not been verified.',
-      not_configured: 'Daily Qwen verification is pending credential rotation.',
+      not_configured: 'Daily Qwen verification is disabled; no current daily result is available.',
     },
   },
   privacy_cleanup: {
@@ -149,14 +151,14 @@ export const CHECK_DEFINITIONS = {
       degraded: 'The synthetic cleanup lifecycle did not complete.',
       outage: 'Synthetic privacy cleanup failed after a daily probe.',
       unknown: 'The daily synthetic cleanup lifecycle has not been verified.',
-      not_configured: 'Daily privacy lifecycle validation is not enabled yet.',
+      not_configured: 'Daily privacy lifecycle validation is disabled; no current daily result is available.',
     },
   },
   mobile_tests: {
     label: 'Mobile application tests',
     evidenceKind: 'release',
     summaries: {
-      operational: '420 mobile tests passed in the release gate.',
+      operational: `${currentRelease.mobileTests.tests} mobile tests across ${currentRelease.mobileTests.suites} suites passed in the release gate.`,
       degraded: 'The mobile release test gate reported failures.',
       outage: 'The mobile release test gate did not complete.',
       unknown: 'Mobile release test evidence is unavailable.',
@@ -167,7 +169,7 @@ export const CHECK_DEFINITIONS = {
     label: 'Backend handler tests',
     evidenceKind: 'release',
     summaries: {
-      operational: '53 Supabase handler tests passed in the release gate.',
+      operational: `${currentRelease.backendTests} Supabase contract and handler tests passed in the release gate.`,
       degraded: 'The backend release test gate reported failures.',
       outage: 'The backend release test gate did not complete.',
       unknown: 'Backend release test evidence is unavailable.',
@@ -178,7 +180,7 @@ export const CHECK_DEFINITIONS = {
     label: 'Deployed Edge Functions',
     evidenceKind: 'release',
     summaries: {
-      operational: 'Nine production Edge Functions are recorded in release evidence.',
+      operational: `${currentRelease.edgeFunctionCount} production Edge Functions are recorded in release evidence.`,
       degraded: 'The Edge Function release inventory is incomplete.',
       outage: 'The Edge Function release was not completed.',
       unknown: 'Edge Function release evidence is unavailable.',
@@ -189,7 +191,7 @@ export const CHECK_DEFINITIONS = {
     label: 'Expo SDK release gate',
     evidenceKind: 'release',
     summaries: {
-      operational: 'Expo SDK 56 and Expo Doctor 21 of 21 are verified.',
+      operational: `Expo SDK ${currentRelease.expo.sdk} and Expo Doctor ${currentRelease.expo.doctorPassed} of ${currentRelease.expo.doctorTotal} are verified.`,
       degraded: 'The Expo SDK release gate reported warnings.',
       outage: 'The Expo SDK release gate failed.',
       unknown: 'Expo SDK release evidence is unavailable.',
@@ -200,7 +202,7 @@ export const CHECK_DEFINITIONS = {
     label: 'Android production build',
     evidenceKind: 'release',
     summaries: {
-      operational: 'Android versionCode 4 production AAB completed on EAS.',
+      operational: `PAUSE ${currentRelease.version} Android versionCode ${currentRelease.androidVersionCode} production AAB completed on EAS.`,
       degraded: 'The Android release build completed with unresolved checks.',
       outage: 'The Android release build failed.',
       unknown: 'Android build evidence is unavailable.',
@@ -295,7 +297,7 @@ export function createHealthCheck(
   return check;
 }
 
-export function createReleaseEvidence(checkedAt = '2026-07-10T00:00:00.000Z'): HealthCheck[] {
+export function createReleaseEvidence(checkedAt = currentRelease.verifiedAt): HealthCheck[] {
   return [
     createHealthCheck('mobile_tests', 'operational', checkedAt),
     createHealthCheck('backend_tests', 'operational', checkedAt),
@@ -345,9 +347,9 @@ export function buildHealthSnapshot(input: {
   const checks = input.checks.map(parseHealthCheck);
   const releaseEvidence = input.releaseEvidence.map(parseHealthCheck);
   const validationEvidence = input.validationEvidence.map(parseHealthCheck);
-  const healthChecks = [...checks, ...validationEvidence].filter((check) => check.status !== 'not_configured');
+  const liveChecks = checks.filter((check) => check.evidenceKind === 'live' && check.status !== 'not_configured');
   const stale = isSnapshotStale({ generatedAt, checks, validationEvidence }, now);
-  const effectiveStatuses = healthChecks.map((check) =>
+  const effectiveStatuses = liveChecks.map((check) =>
     isCheckStale(check, now) ? ('unknown' as const) : check.status,
   );
 
@@ -388,7 +390,7 @@ export function isSnapshotStale(
 ): boolean {
   const generatedAge = now.getTime() - Date.parse(snapshot.generatedAt);
   if (!Number.isFinite(generatedAge) || generatedAge > LIVE_STALE_MS || generatedAge < -5 * 60 * 1_000) return true;
-  return [...snapshot.checks, ...snapshot.validationEvidence].some((check) => isCheckStale(check, now));
+  return snapshot.checks.some((check) => check.evidenceKind === 'live' && isCheckStale(check, now));
 }
 
 export function parseHealthSnapshot(value: unknown): HealthSnapshot {
@@ -483,8 +485,8 @@ export function snapshotToSample(snapshot: HealthSnapshot): HealthSample {
     generatedAt: parsed.generatedAt,
     overallStatus: parsed.overallStatus,
     stale: parsed.stale,
-    checks: [...parsed.checks, ...parsed.validationEvidence]
-      .filter((check) => check.evidenceKind === 'live' || check.evidenceKind === 'daily')
+    checks: parsed.checks
+      .filter((check) => check.evidenceKind === 'live')
       .map(({ id, status, checkedAt, latencyMs }) => ({
         id,
         status,
@@ -546,15 +548,24 @@ export function parseHealthHistory(value: unknown, now = new Date()): HealthHist
 
 export function calculateProbeSuccessRate(history: HealthHistory): { successful: number; observed: number; percentage: number | null } {
   const parsed = parseHealthHistory(history, new Date(history.generatedAt));
-  const determinate = parsed.samples.filter((sample) =>
-    sample.overallStatus === 'operational' || sample.overallStatus === 'degraded' || sample.overallStatus === 'outage',
+  const statuses = parsed.samples.map(liveSampleStatus);
+  const determinate = statuses.filter((status) =>
+    status === 'operational' || status === 'degraded' || status === 'outage',
   );
-  const successful = determinate.filter((sample) => sample.overallStatus === 'operational').length;
+  const successful = determinate.filter((status) => status === 'operational').length;
   return {
     successful,
     observed: determinate.length,
     percentage: determinate.length === 0 ? null : Math.round((successful / determinate.length) * 1_000) / 10,
   };
+}
+
+/** Derives history from live checks only, including legacy samples containing daily checks. */
+export function liveSampleStatus(sample: HealthSample): HealthStatus {
+  const liveStatuses = sample.checks
+    .filter((check) => CHECK_DEFINITIONS[check.id].evidenceKind === 'live' && check.status !== 'not_configured')
+    .map((check) => check.status);
+  return aggregateHealthStatus(liveStatuses.length > 0 ? liveStatuses : ['not_configured']);
 }
 
 export function stringifyPublicSnapshot(snapshot: HealthSnapshot): string {

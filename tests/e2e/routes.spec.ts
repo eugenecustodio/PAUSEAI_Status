@@ -4,7 +4,7 @@ const projectBase = '/PAUSEAI_Status';
 
 const routes = [
   { path: '/', heading: /Own the\s*interruption/i },
-  { path: '/status/', heading: /Evidence with an honest clock/i },
+  { path: '/status/', heading: /Status,\s*without guesswork/i },
   { path: '/updates/', heading: /Progress, without the theater/i },
   { path: '/updates/actual-ui-showcase-film/', heading: /New actual-UI showcase film is live/i },
   { path: '/updates/backend-qwen-deployment/', heading: /Supabase and Qwen path verified/i },

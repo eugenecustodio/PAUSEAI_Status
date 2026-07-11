@@ -3,9 +3,11 @@ import type { HealthCheck, HealthStatus } from '../../lib/health';
 
 interface Props {
   check: HealthCheck;
+  currentStatus?: HealthStatus;
+  stale?: boolean;
 }
 
-const { check } = Astro.props;
+const { check, currentStatus = check.status, stale = false } = Astro.props;
 
 function statusLabel(status: HealthStatus): string {
   return status === 'not_configured'
@@ -27,15 +29,19 @@ function formatDate(value: string): string {
 }
 ---
 
-<article class="health-card" data-health-status={check.status}>
+<article class="health-card" data-health-status={currentStatus}>
   <div class="health-card-head">
-    <span class="status-pill">{statusLabel(check.status)}</span>
+    <span class="status-pill">{statusLabel(currentStatus)}</span>
     <span class="evidence-label">{evidenceLabel(check)}</span>
   </div>
   <h3>{check.label}</h3>
-  <p>{check.summary}</p>
+  <p>
+    {stale
+      ? `Current state is unknown because this evidence expired. Last recorded result: ${statusLabel(check.status)}.`
+      : check.summary}
+  </p>
   <div class="health-meta">
-    <time datetime={check.checkedAt}>{formatDate(check.checkedAt)}</time>
+    <span>Last check <time datetime={check.checkedAt}>{formatDate(check.checkedAt)}</time></span>
     {check.latencyMs !== undefined && <span>{check.latencyMs} ms</span>}
     {check.errorCode && <span>Code: {check.errorCode}</span>}
   </div>
@@ -43,12 +49,15 @@ function formatDate(value: string): string {
 
 <style>
   .health-card {
-    min-height: 245px;
-    padding: 1.5rem;
+    display: flex;
+    min-height: 230px;
+    flex-direction: column;
+    padding: clamp(1.25rem, 3vw, 1.6rem);
     border: 1px solid var(--color-line);
-    border-top-color: var(--status-color);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
+    border-radius: 1.35rem;
+    background:
+      linear-gradient(145deg, color-mix(in srgb, var(--status-color) 7%, transparent), transparent 52%),
+      var(--color-surface);
   }
 
   .health-card-head {
@@ -59,10 +68,14 @@ function formatDate(value: string): string {
   }
 
   .health-card h3 {
-    margin-block: 2rem 0.7rem;
+    max-width: 22ch;
+    margin-block: 1.75rem 0.6rem;
+    font-size: clamp(1.05rem, 2vw, 1.28rem);
+    letter-spacing: -0.025em;
   }
 
   .health-card > p {
+    margin-bottom: 0;
     color: var(--color-muted);
     line-height: 1.65;
   }
@@ -71,7 +84,8 @@ function formatDate(value: string): string {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem 1rem;
-    margin-top: 1.2rem;
+    margin-top: auto;
+    padding-top: 1.2rem;
     color: var(--color-dim);
     font: 0.65rem/1.5 var(--font-mono);
   }
@@ -81,7 +95,7 @@ function formatDate(value: string): string {
     align-items: center;
     gap: 0.45rem;
     color: var(--status-color);
-    font: 0.66rem var(--font-mono);
+    font: 0.68rem var(--font-mono);
   }
 
   .status-pill::before {
@@ -89,7 +103,8 @@ function formatDate(value: string): string {
     height: 0.45rem;
     border: 1px solid currentcolor;
     border-radius: 50%;
-    background: color-mix(in srgb, currentcolor 35%, transparent);
+    background: currentcolor;
+    box-shadow: 0 0 0 4px color-mix(in srgb, currentcolor 12%, transparent);
     content: '';
   }
 

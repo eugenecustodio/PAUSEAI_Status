@@ -9,7 +9,7 @@ The dashboard intentionally separates four kinds of evidence:
 | Kind | What it establishes | Typical age |
 | --- | --- | --- |
 | Live | Synthetic Auth, profile/RLS, database, and Edge availability checks | Every 30 minutes; stale after 2 hours |
-| Daily | Synthetic Qwen classification, digest, zero-retention, and cleanup lifecycle | At most every 24 hours; stale after 36 hours |
+| Daily | Synthetic preset, Qwen classification, digest, zero-retention, and verified cleanup lifecycle | At most every 24 hours when deliberately enabled; stale after 36 hours |
 | Release | Test suites, EAS build, native verifier, and retention-job evidence from a named release gate | Changes only when a release is validated |
 | Manual | Physical Android/OEM behavior that cannot be proved by CI | Pending until a human records the result |
 
@@ -23,6 +23,27 @@ The status labels mean:
 
 The history reports **probe success rate**, not contractual uptime. Never relabel release evidence as live or infer an outage from runner ambiguity.
 
+The public current-state label is derived from **live checks only**. Daily AI/privacy evidence can be degraded or unavailable without rewriting the latest Auth/RLS/Edge result. The daily lane must still show its own state prominently. Seven-day success calculations likewise derive only from live component checks, including when older history records contain daily samples.
+
+## Current production release record
+
+`src/data/release.ts` is the canonical public manifest for current release evidence. Update it only after all values have been verified together. Status summaries, proof cards, and build links must derive from that manifest rather than repeating numbers in page files. Historical update articles remain untouched because they describe the release that was current when each article was published.
+
+The current record is PAUSE 0.1.0, Android versionCode 5, 429 mobile tests across 37 suites, 53 backend tests, nine deployed Edge Functions, Expo SDK 56 with Expo Doctor 21/21, verified July 11, 2026.
+
+## Browser freshness contract
+
+The status page installs `FreshnessController.astro`. It makes no fetches: on initial load, once per minute, and whenever the tab becomes visible, it compares the published timestamp with the browser clock. After two hours it changes only the displayed **current** status to Unknown while preserving the latest recorded result.
+
+Any same-origin health preview, including the homepage preview, can opt in without adding another network request:
+
+1. Import and render `FreshnessController.astro` once on the page.
+2. Put `data-status-freshness-root`, `data-generated-at`, and `data-recorded-status` on the preview wrapper.
+3. Mark the mutable badge with `data-current-status` and its text with `data-current-status-label`.
+4. Optionally add `data-current-status-summary`, `data-current-freshness-label`, and a `data-stale-notice` element. Keep latest-recorded-result copy outside those hooks so it is never erased.
+
+The pure `evaluateStatusFreshness` function in `src/lib/statusFreshness.ts` defines the two-hour boundary and is covered at 1:59 and 2:01. Do not implement another freshness timer in a page component.
+
 ## Create the synthetic account
 
 Create a dedicated, non-human account through the project's normal Supabase Auth path. Do not reuse a teammate, tester, judge, or production user.
@@ -33,7 +54,7 @@ Create a dedicated, non-human account through the project's normal Supabase Auth
 4. Ensure the account begins with Cloud AI disabled and zero-hour preview retention.
 5. Record the credentials only in GitHub Actions repository secrets as described below.
 
-The account will create disposable health data during the daily probe. The probe must delete that data in `finally`, verify cleanup, and leave Cloud AI disabled even when an earlier assertion fails.
+The account will create disposable preset, boundary, device, rule, notification, and digest data during the daily probe. The probe must delete that data in `finally`, verify every owner-scoped table is empty (including `boundary_presets`), and leave Cloud AI disabled even when an earlier assertion fails.
 
 ## Configure GitHub Actions
 

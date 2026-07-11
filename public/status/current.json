@@ -47,31 +47,31 @@
       "label": "Mobile application tests",
       "status": "operational",
       "evidenceKind": "release",
-      "checkedAt": "2026-07-10T00:00:00.000Z",
-      "summary": "420 mobile tests passed in the release gate."
+      "checkedAt": "2026-07-11T10:53:32.621Z",
+      "summary": "429 mobile tests across 37 suites passed in the release gate."
     },
     {
       "id": "backend_tests",
       "label": "Backend handler tests",
       "status": "operational",
       "evidenceKind": "release",
-      "checkedAt": "2026-07-10T00:00:00.000Z",
-      "summary": "53 Supabase handler tests passed in the release gate."
+      "checkedAt": "2026-07-11T10:53:32.621Z",
+      "summary": "53 Supabase contract and handler tests passed in the release gate."
     },
     {
       "id": "edge_release",
       "label": "Deployed Edge Functions",
       "status": "operational",
       "evidenceKind": "release",
-      "checkedAt": "2026-07-10T00:00:00.000Z",
-      "summary": "Nine production Edge Functions are recorded in release evidence."
+      "checkedAt": "2026-07-11T10:53:32.621Z",
+      "summary": "9 production Edge Functions are recorded in release evidence."
     },
     {
       "id": "expo_sdk",
       "label": "Expo SDK release gate",
       "status": "operational",
       "evidenceKind": "release",
-      "checkedAt": "2026-07-10T00:00:00.000Z",
+      "checkedAt": "2026-07-11T10:53:32.621Z",
       "summary": "Expo SDK 56 and Expo Doctor 21 of 21 are verified."
     },
     {
@@ -79,15 +79,15 @@
       "label": "Android production build",
       "status": "operational",
       "evidenceKind": "release",
-      "checkedAt": "2026-07-10T00:00:00.000Z",
-      "summary": "Android versionCode 4 production AAB completed on EAS."
+      "checkedAt": "2026-07-11T10:53:32.621Z",
+      "summary": "PAUSE 0.1.0 Android versionCode 5 production AAB completed on EAS."
     },
     {
       "id": "retention_job",
       "label": "Retention cleanup job",
       "status": "operational",
       "evidenceKind": "release",
-      "checkedAt": "2026-07-10T00:00:00.000Z",
+      "checkedAt": "2026-07-11T10:53:32.621Z",
       "summary": "The cloud preview-retention cleanup job passed release validation."
     },
     {
@@ -95,7 +95,7 @@
       "label": "Physical Android and OEM QA",
       "status": "not_configured",
       "evidenceKind": "manual",
-      "checkedAt": "2026-07-10T00:00:00.000Z",
+      "checkedAt": "2026-07-11T10:53:32.621Z",
       "summary": "Physical Android and OEM QA remains a manual pending check."
     }
   ],
@@ -106,7 +106,7 @@
       "status": "not_configured",
       "evidenceKind": "daily",
       "checkedAt": "2026-07-10T08:40:20.192Z",
-      "summary": "Daily Qwen verification is pending credential rotation.",
+      "summary": "Daily Qwen verification is disabled; no current daily result is available.",
       "errorCode": "daily_disabled"
     },
     {
@@ -115,7 +115,7 @@
       "status": "not_configured",
       "evidenceKind": "daily",
       "checkedAt": "2026-07-10T08:40:20.192Z",
-      "summary": "Daily Qwen verification is pending credential rotation.",
+      "summary": "Daily Qwen verification is disabled; no current daily result is available.",
       "errorCode": "daily_disabled"
     },
     {
@@ -124,7 +124,7 @@
       "status": "not_configured",
       "evidenceKind": "daily",
       "checkedAt": "2026-07-10T08:40:20.192Z",
-      "summary": "Daily privacy lifecycle validation is not enabled yet.",
+      "summary": "Daily privacy lifecycle validation is disabled; no current daily result is available.",
       "errorCode": "daily_disabled"
     }
   ]

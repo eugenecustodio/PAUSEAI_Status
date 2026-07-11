@@ -1,14 +1,20 @@
 ---
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import FreshnessController from '../components/status/FreshnessController.astro';
 import HealthCard from '../components/status/HealthCard.astro';
 import HealthRow from '../components/status/HealthRow.astro';
+import { currentRelease } from '../data/release';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import {
   aggregateHealthStatus,
   calculateProbeSuccessRate,
   createFallbackSnapshot,
+  createReleaseEvidence,
+  isCheckStale,
+  liveSampleStatus,
   parseHealthHistory,
+  parseHealthSnapshot,
   refreshHealthSnapshot,
   type HealthHistory,
   type HealthStatus,
@@ -16,12 +22,14 @@ import {
 import { withBase } from '../lib/site';
 
 const now = new Date();
-let snapshot = createFallbackSnapshot(now);
+let recordedSnapshot = createFallbackSnapshot(now);
+let snapshot = recordedSnapshot;
 let history: HealthHistory = { schemaVersion: 1, generatedAt: now.toISOString(), samples: [] };
 let dataRecovered = false;
 
 try {
   const raw = JSON.parse(await readFile(resolve('public/status/current.json'), 'utf8')) as unknown;
+  recordedSnapshot = parseHealthSnapshot(raw);
   snapshot = refreshHealthSnapshot(raw, now);
 } catch {
   dataRecovered = true;
@@ -36,9 +44,22 @@ try {
 
 const successRate = calculateProbeSuccessRate(history);
 const overallLabel = statusLabel(snapshot.overallStatus);
+const recordedLabel = statusLabel(recordedSnapshot.overallStatus);
 const dailyGroups = groupHistoryByDay(history);
-const manualChecks = snapshot.releaseEvidence.filter((check) => check.evidenceKind === 'manual');
-const releaseChecks = snapshot.releaseEvidence.filter((check) => check.evidenceKind === 'release');
+const releaseEvidence = createReleaseEvidence();
+const manualChecks = releaseEvidence.filter((check) => check.evidenceKind === 'manual');
+const releaseChecks = releaseEvidence.filter((check) => check.evidenceKind === 'release');
+const dailyEnabled = snapshot.validationEvidence.some((check) => check.status !== 'not_configured');
+const liveComponents = recordedSnapshot.checks.map((check) => ({
+  ...check,
+  currentStatus: isCheckStale(check, now) ? ('unknown' as const) : check.status,
+  stale: isCheckStale(check, now),
+}));
+const dailyComponents = snapshot.validationEvidence.map((check) => ({
+  ...check,
+  currentStatus: isCheckStale(check, now) ? ('unknown' as const) : check.status,
+  stale: isCheckStale(check, now),
+}));
 
 function statusLabel(status: HealthStatus): string {
   return status === 'not_configured'
@@ -48,130 +69,236 @@ function statusLabel(status: HealthStatus): string {
 
 function statusSymbol(status: HealthStatus): string {
   if (status === 'operational') return '✓';
-  if (status === 'degraded') return '△';
+  if (status === 'degraded') return '!';
   if (status === 'outage') return '×';
   if (status === 'not_configured') return '—';
   return '?';
 }
 
-function overallSummary(status: HealthStatus): string {
-  if (status === 'operational') return 'All configured synthetic checks passed their latest evidence window.';
-  if (status === 'degraded') return 'At least one configured check needs attention; details remain separated below.';
-  if (status === 'outage') return 'At least one component reported a confirmed outage in the latest probe.';
-  if (status === 'not_configured') return 'Synthetic monitoring is not configured yet.';
-  return 'The latest runner could not establish a determinate system result.';
+function overallSummary(status: HealthStatus, stale: boolean): string {
+  if (stale) {
+    return `Current health is unknown because the latest live check is older than two hours. The last recorded result was ${recordedLabel.toLowerCase()}.`;
+  }
+  if (status === 'operational') return 'Every configured live component passed its latest synthetic check.';
+  if (status === 'degraded') return 'A live component responded but did not satisfy its full operating contract.';
+  if (status === 'outage') return 'A live component returned confirmed evidence of an outage.';
+  if (status === 'not_configured') return 'Live synthetic monitoring is not configured.';
+  return 'The latest live check could not establish a reliable current result.';
 }
 
-function formatDate(value: string): string {
+function freshnessLabel(value: string, stale: boolean): string {
+  const ageMs = now.getTime() - Date.parse(value);
+  if (!Number.isFinite(ageMs) || ageMs < 0) return stale ? 'Stale' : 'Current';
+  const minutes = Math.max(0, Math.floor(ageMs / 60_000));
+  if (minutes < 1) return stale ? 'Stale' : 'Current · just checked';
+  const age = minutes < 60 ? `${minutes}m old` : `${Math.floor(minutes / 60)}h ${minutes % 60}m old`;
+  return `${stale ? 'Stale' : 'Current'} · ${age}`;
+}
+
+function formatDate(value: string, includeTime = true): string {
   return new Intl.DateTimeFormat('en', {
     dateStyle: 'medium',
-    timeStyle: 'short',
+    ...(includeTime ? { timeStyle: 'short' as const } : {}),
     timeZone: 'UTC',
-  }).format(new Date(value)) + ' UTC';
+  }).format(new Date(value)) + (includeTime ? ' UTC' : '');
 }
 
-function groupHistoryByDay(input: HealthHistory): Array<{
+type DaySummary = {
+  day: string;
   label: string;
-  samples: number;
+  total: number;
   status: HealthStatus;
-}> {
+  operational: number;
+  degraded: number;
+  outage: number;
+  unknown: number;
+  successPercentage: number | null;
+};
+
+function groupHistoryByDay(input: HealthHistory): DaySummary[] {
   const groups = new Map<string, HealthStatus[]>();
   for (const sample of input.samples) {
     const day = sample.generatedAt.slice(0, 10);
-    groups.set(day, [...(groups.get(day) ?? []), sample.overallStatus]);
+    groups.set(day, [...(groups.get(day) ?? []), liveSampleStatus(sample)]);
   }
-  return [...groups.entries()].slice(-7).map(([day, statuses]) => ({
-    label: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00.000Z`)),
-    samples: statuses.length,
-    status: aggregateHealthStatus(statuses),
-  }));
+
+  return [...groups.entries()].slice(-7).map(([day, statuses]) => {
+    const operational = statuses.filter((status) => status === 'operational').length;
+    const degraded = statuses.filter((status) => status === 'degraded').length;
+    const outage = statuses.filter((status) => status === 'outage').length;
+    const unknown = statuses.filter((status) => status === 'unknown' || status === 'not_configured').length;
+    const determinate = operational + degraded + outage;
+    return {
+      day,
+      label: new Intl.DateTimeFormat('en', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }).format(new Date(`${day}T00:00:00.000Z`)),
+      total: statuses.length,
+      status: aggregateHealthStatus(statuses),
+      operational,
+      degraded,
+      outage,
+      unknown,
+      successPercentage: determinate === 0 ? null : Math.round((operational / determinate) * 100),
+    };
+  });
 }
 ---
 
 <BaseLayout
   title="System Status"
-  description="Layered, synthetic operational evidence for PAUSE AI Auth, RLS, Edge Functions, Qwen guidance, cleanup, and release gates."
+  description="Current PAUSE AI backend health, monitoring freshness, seven-day live-check history, and clearly labeled release evidence."
 >
-  <section class="status-hero shell" aria-labelledby="status-title">
-    <div>
-      <p class="eyebrow">Public system pulse</p>
-      <h1 id="status-title">Evidence with an honest clock.</h1>
-      <p class="lede">
-        A dedicated synthetic account checks the PAUSE backend. No teammate account, visitor browser,
-        or real notification is used.
-      </p>
-    </div>
-    <article class="overall-card" data-health-status={snapshot.overallStatus} aria-label={`Overall status: ${overallLabel}`}>
-      <div class="overall-topline">
-        <span class="status-symbol" aria-hidden="true">{statusSymbol(snapshot.overallStatus)}</span>
-        <span>Overall system evidence</span>
-      </div>
-      <strong>{overallLabel}</strong>
+  <section
+    class="status-hero shell"
+    aria-labelledby="status-title"
+    data-status-freshness-root
+    data-generated-at={recordedSnapshot.generatedAt}
+    data-recorded-status={recordedSnapshot.overallStatus}
+  >
+    <div class="status-intro">
+      <p class="eyebrow"><span>PAUSE AI</span> · Public system pulse</p>
+      <h1 id="status-title"><span>Status,</span> <em>without guesswork.</em></h1>
       <p>
-        {snapshot.stale
-          ? 'The latest frequent evidence is stale, so current health is not assumed.'
-          : overallSummary(snapshot.overallStatus)}
+        Synthetic checks show what answered, when it answered, and how much confidence that evidence deserves.
+        No real notification or visitor data is used.
       </p>
-      <dl>
+      <a class="status-link" href="#evidence-map">See how evidence is labeled <span aria-hidden="true">↓</span></a>
+    </div>
+
+    <article
+      class="signal-card"
+      data-current-status
+      data-health-status={snapshot.overallStatus}
+      aria-label={`Current system status: ${overallLabel}`}
+    >
+      <div class="signal-card__topline">
+        <span>Current live state</span>
+        <span class="freshness-chip" data-current-freshness-label>
+          {freshnessLabel(recordedSnapshot.generatedAt, snapshot.stale)}
+        </span>
+      </div>
+      <div class="signal-state">
+        <span class="signal-symbol" aria-hidden="true">{statusSymbol(snapshot.overallStatus)}</span>
+        <strong data-current-status-label>{overallLabel}</strong>
+      </div>
+      <p data-current-status-summary>{overallSummary(snapshot.overallStatus, snapshot.stale)}</p>
+
+      <dl class="signal-facts">
         <div>
-          <dt>Generated</dt>
-          <dd><time datetime={snapshot.generatedAt}>{formatDate(snapshot.generatedAt)}</time></dd>
+          <dt>Latest recorded result</dt>
+          <dd>{recordedLabel}</dd>
         </div>
         <div>
-          <dt>Probe success rate</dt>
-          <dd>{successRate.percentage === null ? 'Not enough history' : `${successRate.percentage}%`}</dd>
+          <dt>Latest live check</dt>
+          <dd><time datetime={recordedSnapshot.generatedAt}>{formatDate(recordedSnapshot.generatedAt)}</time></dd>
+        </div>
+        <div>
+          <dt>Coverage</dt>
+          <dd>{recordedSnapshot.checks.length} live components</dd>
         </div>
       </dl>
+
+      <div class="component-summary" aria-label="Latest recorded live component results">
+        {recordedSnapshot.checks.map((check) => (
+          <div data-health-status={check.status}>
+            <span aria-hidden="true"></span>
+            <small>{check.label}</small>
+            <strong>{statusLabel(check.status)}</strong>
+          </div>
+        ))}
+      </div>
+
+      <p class="stale-alert" data-stale-notice hidden={!snapshot.stale} role="status">
+        Freshness expired. The recorded result is preserved above, but it is not presented as current health.
+      </p>
     </article>
   </section>
 
-  {(snapshot.stale || dataRecovered) && (
-    <aside class="status-notice shell" role="status">
-      <span aria-hidden="true">!</span>
-      <p>
-        <strong>{dataRecovered ? 'Published status data was unavailable.' : 'Frequent evidence is older than two hours.'}</strong>
-        The dashboard is showing a safe unknown state instead of carrying forward a false green result.
-      </p>
+  {dataRecovered && (
+    <aside class="data-notice shell" role="status">
+      <span aria-hidden="true">?</span>
+      <p><strong>Published evidence could not be validated.</strong> The page has failed closed to an unknown state.</p>
     </aside>
   )}
+
+  <section class="evidence-map shell" id="evidence-map" aria-labelledby="evidence-title">
+    <div class="section-heading section-heading--compact">
+      <div>
+        <p class="evidence-label">Monitoring coverage</p>
+        <h2 id="evidence-title">Four clocks. Four meanings.</h2>
+      </div>
+      <p>Operational evidence is never blended with release confidence or manual QA.</p>
+    </div>
+    <div class="evidence-lanes">
+      <article>
+        <span>01</span><p>Live</p><strong>Every 30 minutes</strong><small>Auth, account, RLS, and Edge availability. Stale after two hours.</small>
+      </article>
+      <article>
+        <span>02</span><p>Daily</p><strong>{dailyEnabled ? 'At most every 24 hours' : 'Currently disabled'}</strong><small>AI provenance, retention, digest, and cloud cleanup lifecycle.</small>
+      </article>
+      <article>
+        <span>03</span><p>Release</p><strong>Point in time</strong><small>Tests, SDK checks, production functions, and the signed Android build.</small>
+      </article>
+      <article>
+        <span>04</span><p>Manual</p><strong>Human verified</strong><small>Physical-device and OEM behavior that automation cannot establish.</small>
+      </article>
+    </div>
+  </section>
 
   <section class="status-section shell" aria-labelledby="live-title">
     <div class="section-heading">
       <div>
-        <p class="evidence-label">Live</p>
-        <h2 id="live-title">Backend availability</h2>
+        <p class="evidence-label">Live · scheduled</p>
+        <h2 id="live-title">Latest component checks.</h2>
       </div>
-      <p>Safe checks run every 30 minutes. “Live” means the latest scheduled sample, not continuous telemetry.</p>
+      <p>
+        “Live” means the latest safe synthetic sample, not continuous telemetry. Each card shows when its last
+        result was recorded and fails to Unknown when that evidence expires.
+      </p>
     </div>
     <div class="health-grid">
-      {snapshot.checks.map((check) => <HealthCard check={check} />)}
+      {liveComponents.map((check) => <HealthCard check={check} currentStatus={check.currentStatus} stale={check.stale} />)}
     </div>
   </section>
 
   <section class="status-section shell" aria-labelledby="daily-title">
     <div class="section-heading">
       <div>
-        <p class="evidence-label">Daily</p>
-        <h2 id="daily-title">AI and privacy lifecycle</h2>
+        <p class="evidence-label">Daily · lifecycle</p>
+        <h2 id="daily-title">AI and privacy evidence.</h2>
       </div>
-      <p>At most once per 24 hours: synthetic classification, digest guidance, zero retention, and cleanup.</p>
+      <p>When enabled, a disposable account validates classification, digest guidance, zero retention, and deletion.</p>
     </div>
+    {!dailyEnabled && (
+      <aside class="lane-note" role="note">
+        <span aria-hidden="true">—</span>
+        <p>
+          <strong>Daily synthetic validation is intentionally disabled.</strong>
+          No current daily result exists. It will remain Not configured until provider credentials are safely
+          rotated and the daily probe is deliberately enabled; this does not change the live result above.
+        </p>
+      </aside>
+    )}
     <div class="health-grid health-grid--three">
-      {snapshot.validationEvidence.map((check) => <HealthCard check={check} />)}
+      {dailyComponents.map((check) => <HealthCard check={check} currentStatus={check.currentStatus} stale={check.stale} />)}
     </div>
   </section>
 
   <section class="history-section shell" aria-labelledby="history-title">
     <div class="section-heading">
       <div>
-        <p class="evidence-label">Seven-day samples</p>
-        <h2 id="history-title">Probe history</h2>
+        <p class="evidence-label">Seven-day live record</p>
+        <h2 id="history-title">Checks, not an uptime claim.</h2>
       </div>
       <p>
         {successRate.observed === 0
-          ? 'No determinate frequent samples exist yet.'
-          : `${successRate.successful} of ${successRate.observed} determinate samples were operational.`}
-        Unknown samples are excluded from the rate.
+          ? 'Probe success rate: not enough determinate live samples yet.'
+          : `Probe success rate: ${successRate.successful} of ${successRate.observed} determinate live samples were operational (${successRate.percentage}%).`}
+        Daily evidence and unknown samples are excluded from the success rate.
       </p>
     </div>
     <div class="history-card">
@@ -179,14 +306,24 @@ function groupHistoryByDay(input: HealthHistory): Array<{
         <ol class="history-days">
           {dailyGroups.map((day) => (
             <li data-health-status={day.status}>
-              <span class="history-bar" aria-hidden="true"></span>
-              <strong>{day.label}</strong>
-              <small>{day.samples} {day.samples === 1 ? 'sample' : 'samples'} · {statusLabel(day.status)}</small>
+              <time datetime={day.day}>{day.label}</time>
+              <div class="history-track" aria-hidden="true">
+                {day.operational > 0 && <span class="segment segment--operational" style={`width:${day.operational / day.total * 100}%`}></span>}
+                {day.degraded > 0 && <span class="segment segment--degraded" style={`width:${day.degraded / day.total * 100}%`}></span>}
+                {day.outage > 0 && <span class="segment segment--outage" style={`width:${day.outage / day.total * 100}%`}></span>}
+                {day.unknown > 0 && <span class="segment segment--unknown" style={`width:${day.unknown / day.total * 100}%`}></span>}
+              </div>
+              <div class="history-copy">
+                <strong>{day.successPercentage === null ? 'No determinate samples' : `${day.successPercentage}% live-check success`}</strong>
+                <small>
+                  {day.operational} operational · {day.degraded} degraded · {day.outage} outage · {day.unknown} unknown
+                </small>
+              </div>
             </li>
           ))}
         </ol>
       ) : (
-        <p class="empty-history">History begins after the first scheduled probe.</p>
+        <p class="empty-history">History begins after the first scheduled live probe.</p>
       )}
       <div class="history-legend" aria-label="History status legend">
         {(['operational', 'degraded', 'outage', 'unknown'] as const).map((status) => (
@@ -199,10 +336,15 @@ function groupHistoryByDay(input: HealthHistory): Array<{
   <section class="status-section release-section shell" aria-labelledby="release-title">
     <div class="section-heading">
       <div>
-        <p class="evidence-label">Release</p>
-        <h2 id="release-title">VersionCode 4 evidence</h2>
+        <p class="evidence-label">Release · verified {formatDate(currentRelease.verifiedAt, false)}</p>
+        <h2 id="release-title">PAUSE {currentRelease.version} · versionCode {currentRelease.androidVersionCode}.</h2>
       </div>
-      <p>Point-in-time validation from the latest release gate. These checks are not presented as live monitoring.</p>
+      <p>
+        Point-in-time evidence from the current production release. It supports release confidence, not current uptime.
+        <a href={currentRelease.androidBuild.url} target="_blank" rel="noreferrer">
+          Inspect the EAS build <span aria-hidden="true">↗</span><span class="visually-hidden"> (opens in a new tab)</span>
+        </a>
+      </p>
     </div>
     <div class="release-list">
       {releaseChecks.map((check) => <HealthRow check={check} />)}
@@ -212,8 +354,8 @@ function groupHistoryByDay(input: HealthHistory): Array<{
   <section class="status-section manual-section shell" aria-labelledby="manual-title">
     <div class="section-heading">
       <div>
-        <p class="evidence-label">Manual pending</p>
-        <h2 id="manual-title">Physical Android and OEM QA</h2>
+        <p class="evidence-label">Manual · pending</p>
+        <h2 id="manual-title">Physical Android and OEM QA.</h2>
       </div>
       <p>Compilation and automation cannot prove real notification-listener behavior across manufacturers.</p>
     </div>
@@ -224,71 +366,190 @@ function groupHistoryByDay(input: HealthHistory): Array<{
 
   <section class="status-method shell" aria-labelledby="method-title">
     <div>
-      <p class="eyebrow">How to read this</p>
-      <h2 id="method-title">A probe result, not an uptime promise.</h2>
+      <p class="eyebrow">Reading the signal</p>
+      <h2 id="method-title">Evidence with limits.</h2>
     </div>
     <div>
       <p>
-        Runner, DNS, timeout, or network ambiguity becomes <strong>Unknown</strong>. A confirmed component failure
-        can become <strong>Degraded</strong> or <strong>Outage</strong>. Frequent evidence goes stale after two hours;
-        daily Qwen evidence goes stale after 36 hours.
+        Runner, DNS, timeout, or network ambiguity becomes <strong>Unknown</strong>. Confirmed component failure can
+        become <strong>Degraded</strong> or <strong>Outage</strong>. Live evidence expires after two hours; daily evidence
+        expires after 36 hours. The browser rechecks freshness locally without contacting PAUSE or a third party.
       </p>
       <a href={withBase('/status/current.json')}>Inspect the allowlisted snapshot <span aria-hidden="true">↗</span></a>
     </div>
   </section>
+
+  <FreshnessController />
 </BaseLayout>
 
 <style>
-  .status-hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(330px, .65fr); gap: clamp(3rem, 8vw, 7rem); align-items: end; padding-block: clamp(7rem, 14vw, 11rem) 4rem; }
-  .status-hero h1 { max-width: 11ch; }
-  .status-hero .lede { max-width: 62ch; }
-  .overall-card { padding: 1.6rem; border: 1px solid var(--status-color, var(--color-line)); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--status-color, var(--color-privacy)) 7%, var(--color-surface)); }
-  .overall-topline { display: flex; gap: .65rem; align-items: center; color: var(--color-muted); font: .7rem/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: .07em; }
-  .status-symbol { display: grid; width: 1.6rem; height: 1.6rem; place-items: center; border: 1px solid currentcolor; border-radius: 50%; color: var(--status-color, var(--color-privacy)); }
-  .overall-card > strong { display: block; margin-block: 2rem .6rem; font-size: clamp(2rem, 4vw, 3.4rem); font-weight: 450; letter-spacing: -.04em; }
-  .overall-card > p { color: var(--color-muted); }
-  .overall-card dl { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--color-line); }
-  .overall-card dt { color: var(--color-muted); font: .65rem var(--font-mono); text-transform: uppercase; }
-  .overall-card dd { margin: .4rem 0 0; font-size: .85rem; }
-  .status-notice { display: flex; gap: 1rem; align-items: center; margin-bottom: 3rem; padding: 1rem 1.25rem; border: 1px solid color-mix(in srgb, var(--color-alert) 45%, transparent); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--color-alert) 8%, var(--color-surface)); }
-  .status-notice > span { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid var(--color-alert); border-radius: 50%; color: var(--color-alert); font-family: var(--font-mono); }
-  .status-notice p { margin: 0; color: var(--color-muted); }
-  .status-notice strong { color: var(--color-ink); }
-  .status-section, .history-section { padding-block: 4.5rem; border-top: 1px solid var(--color-line); }
-  .section-heading { display: grid; grid-template-columns: 1fr minmax(280px, .7fr); gap: 2rem; align-items: end; margin-bottom: 2.5rem; }
-  .section-heading h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.5rem); letter-spacing: -.045em; }
-  .section-heading > p { max-width: 55ch; margin: 0; color: var(--color-muted); }
-  .evidence-label { margin-bottom: .65rem; color: var(--color-focus); font: .7rem var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
-  .health-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .status-hero {
+    display: grid;
+    grid-template-columns: minmax(0, .82fr) minmax(420px, 1.18fr);
+    gap: clamp(2.5rem, 7vw, 6.5rem);
+    align-items: center;
+    min-height: calc(100svh - 76px);
+    padding-block: clamp(3rem, 8vw, 6.5rem);
+  }
+
+  .status-intro h1 {
+    max-width: 9ch;
+    margin-bottom: 1.4rem;
+    font-size: clamp(3.1rem, 7vw, 6.6rem);
+    font-weight: 480;
+    letter-spacing: -.065em;
+    line-height: .93;
+  }
+
+  .status-intro h1 em { display: block; color: var(--color-focus); font-style: normal; }
+  .status-intro > p:not(.eyebrow) { max-width: 48ch; color: var(--color-muted); font-size: 1.02rem; }
+  .status-link { display: inline-flex; gap: .6rem; align-items: center; color: var(--color-calm); font: .72rem var(--font-mono); text-decoration: none; }
+  .status-link span { color: var(--color-focus); }
+
+  .signal-card {
+    position: relative;
+    overflow: hidden;
+    padding: clamp(1.25rem, 4vw, 2rem);
+    border: 1px solid color-mix(in srgb, var(--status-color, var(--color-line)) 50%, var(--color-line));
+    border-radius: clamp(1.5rem, 4vw, 2.6rem);
+    background:
+      radial-gradient(circle at 92% 4%, color-mix(in srgb, var(--status-color) 13%, transparent), transparent 13rem),
+      linear-gradient(145deg, rgba(255, 255, 255, .025), transparent 58%),
+      var(--color-surface);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .signal-card::after {
+    position: absolute;
+    width: 9rem;
+    height: 9rem;
+    right: -4.5rem;
+    bottom: -5rem;
+    border: 1px solid color-mix(in srgb, var(--status-color) 25%, transparent);
+    border-radius: 50%;
+    content: '';
+  }
+
+  .signal-card__topline { display: flex; justify-content: space-between; gap: 1rem; align-items: center; color: var(--color-muted); font: .66rem/1.4 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+  .freshness-chip { padding: .42rem .7rem; border: 1px solid color-mix(in srgb, var(--status-color) 35%, transparent); border-radius: 999px; color: var(--status-color); letter-spacing: 0; text-transform: none; }
+  .signal-state { display: flex; gap: .9rem; align-items: center; margin-block: 1.35rem .65rem; }
+  .signal-symbol { display: grid; width: 2.8rem; height: 2.8rem; flex: 0 0 auto; place-items: center; border: 1px solid var(--status-color); border-radius: 50%; color: var(--status-color); font: 1.2rem var(--font-mono); box-shadow: 0 0 0 7px color-mix(in srgb, var(--status-color) 8%, transparent); }
+  .signal-state strong { font-size: clamp(2rem, 5vw, 3.6rem); font-weight: 470; letter-spacing: -.055em; line-height: 1; }
+  .signal-card > p:not(.stale-alert) { max-width: 57ch; margin-bottom: 1.25rem; color: var(--color-muted); }
+  .signal-facts { display: grid; grid-template-columns: .85fr 1.45fr 1fr; gap: .7rem; margin: 0; padding-block: 1rem; border-block: 1px solid var(--color-line); }
+  .signal-facts div { min-width: 0; }
+  .signal-facts dt { color: var(--color-dim); font: .58rem/1.4 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+  .signal-facts dd { overflow-wrap: anywhere; margin: .32rem 0 0; color: var(--color-soft); font-size: .75rem; line-height: 1.45; }
+  .component-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .48rem; margin-top: 1rem; }
+  .component-summary > div { display: grid; min-width: 0; grid-template-columns: auto 1fr; column-gap: .48rem; align-items: center; padding: .58rem .65rem; border: 1px solid var(--color-line); border-radius: .8rem; background: rgba(0, 0, 0, .12); }
+  .component-summary > div > span { width: .4rem; height: .4rem; grid-row: 1 / 3; border-radius: 50%; background: var(--status-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-color) 10%, transparent); }
+  .component-summary small { overflow: hidden; color: var(--color-dim); font: .56rem/1.3 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+  .component-summary strong { color: var(--status-color); font-size: .68rem; font-weight: 500; }
+  .stale-alert { margin: 1rem 0 0; padding: .75rem .85rem; border: 1px solid color-mix(in srgb, var(--color-focus) 28%, transparent); border-radius: .8rem; background: color-mix(in srgb, var(--color-focus) 7%, transparent); color: var(--color-soft); font-size: .75rem; }
+
+  .data-notice, .lane-note { display: flex; gap: 1rem; align-items: center; padding: 1rem 1.2rem; border: 1px solid color-mix(in srgb, var(--color-focus) 30%, transparent); border-radius: 1rem; background: color-mix(in srgb, var(--color-focus) 6%, var(--color-surface)); }
+  .data-notice { margin-block: -1rem 3rem; }
+  .data-notice > span, .lane-note > span { display: grid; width: 2rem; height: 2rem; flex: 0 0 auto; place-items: center; border: 1px solid currentcolor; border-radius: 50%; color: var(--color-focus); font-family: var(--font-mono); }
+  .data-notice p, .lane-note p { margin: 0; color: var(--color-muted); }
+  .data-notice strong, .lane-note strong { color: var(--color-ink); }
+
+  .evidence-map, .status-section, .history-section { padding-block: clamp(4rem, 8vw, 7rem); border-top: 1px solid var(--color-line); }
+  .section-heading { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .7fr); gap: 2rem; align-items: end; margin-bottom: clamp(2rem, 5vw, 3.2rem); }
+  .section-heading--compact { margin-bottom: 2rem; }
+  .section-heading h2 { max-width: 15ch; margin: 0; font-size: clamp(2.15rem, 5vw, 4.4rem); font-weight: 480; letter-spacing: -.055em; line-height: 1; }
+  .section-heading > p { max-width: 56ch; margin: 0; color: var(--color-muted); }
+  .section-heading > p a { display: inline-block; margin-top: .7rem; color: var(--color-calm); font: .7rem var(--font-mono); }
+  .evidence-label { margin-bottom: .7rem; color: var(--color-focus); font: .67rem var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+
+  .evidence-lanes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--color-line); border-radius: 1.4rem; background: var(--color-surface); }
+  .evidence-lanes article { min-width: 0; padding: 1.25rem; border-right: 1px solid var(--color-line); }
+  .evidence-lanes article:last-child { border-right: 0; }
+  .evidence-lanes article > span { color: var(--color-dim); font: .6rem var(--font-mono); }
+  .evidence-lanes p { margin: 1.5rem 0 .4rem; color: var(--color-focus); font: .65rem var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+  .evidence-lanes strong { display: block; margin-bottom: .6rem; font-size: 1rem; }
+  .evidence-lanes small { display: block; color: var(--color-muted); line-height: 1.55; }
+
+  .health-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
   .health-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lane-note { margin-bottom: 1rem; }
+
+  .history-card { overflow: hidden; padding: clamp(1rem, 3vw, 1.7rem); border: 1px solid var(--color-line); border-radius: 1.4rem; background: var(--color-surface); }
+  .history-days { display: grid; gap: .2rem; margin: 0; padding: 0; list-style: none; }
+  .history-days li { display: grid; grid-template-columns: 9rem minmax(150px, 1fr) minmax(260px, .9fr); gap: 1.1rem; align-items: center; padding: .85rem; border-radius: .8rem; }
+  .history-days li:nth-child(odd) { background: rgba(255, 255, 255, .018); }
+  .history-days time { font: .67rem var(--font-mono); }
+  .history-track { display: flex; height: .55rem; overflow: hidden; border-radius: 999px; background: rgba(255, 255, 255, .04); }
+  .segment { height: 100%; }
+  .segment--operational { background: var(--color-calm); }
+  .segment--degraded { background: var(--color-alert); }
+  .segment--outage { background: #ff8f8f; }
+  .segment--unknown { background: var(--color-focus); }
+  .history-copy strong, .history-copy small { display: block; }
+  .history-copy strong { color: var(--status-color); font-size: .78rem; }
+  .history-copy small { margin-top: .16rem; color: var(--color-dim); font-size: .64rem; }
+  .history-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; padding: 1rem .85rem 0; border-top: 1px solid var(--color-line); }
+  .history-legend span { display: inline-flex; align-items: center; gap: .4rem; color: var(--color-muted); font: .62rem var(--font-mono); }
+  .history-legend i { width: .45rem; height: .45rem; border-radius: 50%; background: var(--status-color); }
+  .empty-history { min-height: 110px; display: grid; place-items: center; margin: 0; color: var(--color-muted); }
+
+  .release-list { border-block: 1px solid var(--color-line); }
+  .manual-section { margin-bottom: 4rem; }
+  .status-method { display: grid; grid-template-columns: .8fr 1.2fr; gap: 3rem; margin-bottom: 7rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--color-line); border-radius: 1.6rem; background: linear-gradient(135deg, color-mix(in srgb, var(--color-focus) 7%, var(--color-surface)), var(--color-surface)); }
+  .status-method h2 { margin: 0; font-size: clamp(2rem, 4vw, 3.4rem); letter-spacing: -.05em; }
+  .status-method p { color: var(--color-muted); line-height: 1.75; }
+  .status-method a { color: var(--color-calm); font: .72rem var(--font-mono); }
+
   [data-health-status='operational'] { --status-color: var(--color-calm); }
   [data-health-status='degraded'] { --status-color: var(--color-alert); }
   [data-health-status='outage'] { --status-color: #ff8f8f; }
   [data-health-status='unknown'] { --status-color: var(--color-focus); }
   [data-health-status='not_configured'] { --status-color: var(--color-muted); }
-  .history-card { padding: clamp(1.2rem, 3vw, 2rem); border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: var(--color-surface); }
-  .history-days { display: grid; min-height: 180px; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .8rem; align-items: end; margin: 0; padding: 0; list-style: none; }
-  .history-days li { display: flex; min-width: 0; flex-direction: column; }
-  .history-bar { min-height: 26px; height: var(--history-height, 80px); max-height: 110px; margin-bottom: .8rem; border: 1px solid color-mix(in srgb, var(--status-color) 48%, transparent); border-radius: .5rem; background: color-mix(in srgb, var(--status-color) 18%, transparent); }
-  .history-days strong { font: .68rem var(--font-mono); }
-  .history-days small { overflow: hidden; color: var(--color-muted); font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
-  .history-legend { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--color-line); }
-  .history-legend span { display: inline-flex; align-items: center; gap: .4rem; color: var(--color-muted); font: .62rem var(--font-mono); }
-  .history-legend i { width: .5rem; height: .5rem; border-radius: 50%; background: var(--status-color); }
-  .empty-history { min-height: 120px; display: grid; place-items: center; color: var(--color-muted); }
-  .release-list { border-block: 1px solid var(--color-line); }
-  .manual-section { margin-bottom: 4rem; }
-  .status-method { display: grid; grid-template-columns: .8fr 1.2fr; gap: 3rem; margin-bottom: 8rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--color-focus) 6%, var(--color-surface)); }
-  .status-method h2 { margin: 0; }
-  .status-method p { color: var(--color-muted); line-height: 1.75; }
-  .status-method a { color: var(--color-calm); font: .72rem var(--font-mono); }
-  @media (max-width: 850px) {
-    .status-hero, .section-heading, .status-method { grid-template-columns: 1fr; }
-    .health-grid, .health-grid--three { grid-template-columns: 1fr; }
-    .history-days { grid-template-columns: repeat(4, 1fr); }
+
+  @media (max-width: 950px) {
+    .status-hero { grid-template-columns: 1fr; min-height: auto; }
+    .evidence-lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .evidence-lanes article:nth-child(2) { border-right: 0; }
+    .evidence-lanes article:nth-child(-n + 2) { border-bottom: 1px solid var(--color-line); }
+    .history-days li { grid-template-columns: 7.5rem minmax(130px, 1fr) minmax(220px, .9fr); }
   }
+
+  @media (max-width: 760px) {
+    .status-hero { gap: 2.5rem; padding-block: 1.25rem 4rem; }
+    .signal-card { order: -1; }
+    .status-intro h1 { font-size: clamp(3rem, 15vw, 5rem); }
+    .status-intro > p:not(.eyebrow) { font-size: .95rem; }
+    .section-heading, .status-method { grid-template-columns: 1fr; }
+    .health-grid, .health-grid--three { grid-template-columns: 1fr; }
+    .history-days li { grid-template-columns: 1fr; gap: .55rem; }
+    .history-copy { display: flex; justify-content: space-between; gap: 1rem; }
+    .history-copy small { text-align: right; }
+  }
+
   @media (max-width: 520px) {
-    .history-days { grid-template-columns: repeat(2, 1fr); }
-    .overall-card dl { grid-template-columns: 1fr; }
+    .status-hero { width: min(calc(100% - 24px), var(--shell)); }
+    .signal-card { padding: 1.05rem; border-radius: 1.25rem; }
+    .signal-card__topline { font-size: .58rem; }
+    .signal-state { margin-block: 1rem .5rem; }
+    .signal-state strong { font-size: 2.15rem; }
+    .signal-symbol { width: 2.25rem; height: 2.25rem; }
+    .signal-card > p:not(.stale-alert) { margin-bottom: .9rem; font-size: .78rem; line-height: 1.5; }
+    .signal-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; padding-block: .75rem; }
+    .signal-facts dt { font-size: .5rem; }
+    .signal-facts dd { font-size: .62rem; }
+    .component-summary { margin-top: .75rem; }
+    .component-summary > div { padding: .45rem .5rem; }
+    .component-summary small { font-size: .5rem; }
+    .component-summary strong { font-size: .58rem; }
+    .stale-alert { font-size: .67rem; }
+    .evidence-lanes { grid-template-columns: 1fr; }
+    .evidence-lanes article { border-right: 0; border-bottom: 1px solid var(--color-line); }
+    .evidence-lanes article:nth-child(3) { border-bottom: 1px solid var(--color-line); }
+    .evidence-lanes article:last-child { border-bottom: 0; }
+    .history-copy { display: block; }
+    .history-copy small { text-align: left; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { scroll-behavior: auto; }
   }
 </style>

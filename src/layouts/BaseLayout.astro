@@ -8,13 +8,15 @@ interface Props {
   title?: string;
   description?: string;
   image?: string;
+  imageAlt?: string;
   noIndex?: boolean;
 }
 
 const {
   title,
   description = SITE_DESCRIPTION,
-  image = '/media/pause-app-video-poster.png',
+  image = '/brand/pause-social.png',
+  imageAlt = 'PAUSE AI — a calm boundary for receiver-owned attention',
   noIndex = false,
 } = Astro.props;
 
@@ -28,24 +30,31 @@ const socialImage = new URL(withBase(image), Astro.site);
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000302" />
+    <meta name="theme-color" content="#11130f" />
     <meta name="color-scheme" content="dark" />
     <meta name="description" content={description} />
     {noIndex && <meta name="robots" content="noindex, nofollow" />}
 
     <link rel="canonical" href={canonical} />
-    <link rel="icon" type="image/png" href={withBase('/favicon.png')} />
+    <link rel="icon" href={withBase('/favicon.svg')} type="image/svg+xml" />
+    <link rel="icon" href={withBase('/favicon.png')} type="image/png" sizes="48x48" />
+    <link rel="apple-touch-icon" href={withBase('/apple-touch-icon.png')} sizes="180x180" />
+    <link rel="manifest" href={withBase('/site.webmanifest')} />
+
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={socialImage} />
-    <meta property="og:image:alt" content="PAUSE AI application film poster" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={imageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={pageTitle} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImage} />
+    <meta name="twitter:image:alt" content={imageAlt} />
 
     <title>{pageTitle}</title>
   </head>

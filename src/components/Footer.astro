@@ -1,33 +1,39 @@
 ---
 import { SITE_NAME, SITE_SUBTITLE, withBase } from '../lib/site';
+
+const year = new Date().getUTCFullYear();
 ---
 
 <footer class="site-footer">
-  <div class="shell footer-grid">
-    <div>
+  <div class="shell footer-topline">
+    <div class="footer-intro">
       <a class="brand footer-brand" href={withBase('/')} aria-label={`${SITE_NAME} home`}>
-        <img src={withBase('/favicon.png')} width="34" height="34" alt="" loading="lazy" />
+        <img src={withBase('/brand/pause-mark.svg')} width="40" height="40" alt="" loading="lazy" />
         <span>{SITE_NAME}</span>
       </a>
       <p>{SITE_SUBTITLE}</p>
     </div>
 
-    <nav aria-label="Footer navigation">
-      <a href={withBase('/status/')}>System status</a>
-      <a href={withBase('/updates/')}>Updates</a>
-      <a href={withBase('/privacy/')}>Privacy</a>
-      <a
-        href="https://github.com/eugenecustodio/PAUSEAI_Status"
-        target="_blank"
-        rel="noreferrer"
-      >
-        View public repository<span class="visually-hidden"> (opens in a new tab)</span>
-      </a>
-    </nav>
+    <div class="footer-nav-grid">
+      <nav aria-labelledby="footer-product-title">
+        <h2 id="footer-product-title">Explore</h2>
+        <a href={withBase('/')}>Product</a>
+        <a href={withBase('/architecture/')}>Architecture</a>
+        <a href={withBase('/privacy/')}>Privacy</a>
+      </nav>
+      <nav aria-labelledby="footer-evidence-title">
+        <h2 id="footer-evidence-title">Evidence</h2>
+        <a href={withBase('/status/')}>System status</a>
+        <a href={withBase('/updates/')}>Build journal</a>
+        <a href="https://github.com/eugenecustodio/PAUSEAI_Status" target="_blank" rel="noreferrer">
+          Public repository<span class="visually-hidden"> (opens in a new tab)</span>
+        </a>
+      </nav>
+    </div>
+  </div>
 
-    <p class="footer-note">
-      Built as a transparent product record. No analytics, visitor tracking, or browser-side
-      access to PAUSE infrastructure.
-    </p>
+  <div class="shell footer-bottomline">
+    <p>© {year} {SITE_NAME}. A transparent product record.</p>
+    <p>No analytics, advertising pixels, or third-party embeds.</p>
   </div>
 </footer>

@@ -5,39 +5,39 @@ import { getCollection } from 'astro:content';
 import HeroBoundaryVisual from '../components/HeroBoundaryVisual.astro';
 import ProductVideo from '../components/ProductVideo.astro';
 import Reveal from '../components/Reveal.astro';
+import { releaseEvidence } from '../data/release';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { createFallbackSnapshot, refreshHealthSnapshot, type HealthStatus } from '../lib/health';
 import { SITE_SUBTITLE, withBase } from '../lib/site';
 
-const proof = [
-  { value: '420', label: 'mobile tests' },
-  { value: '53', label: 'backend tests' },
-  { value: '9', label: 'Edge Functions' },
-  { value: '56', label: 'Expo SDK' },
-  { value: '4', label: 'Android versionCode' },
-];
-
 const principles = [
   {
     number: '01',
-    title: 'Communication stays put',
-    copy: 'PAUSE sits above the apps people already use. It is not a messenger, and nobody needs to migrate.',
+    label: 'Choose',
+    title: 'Set the boundary',
+    copy: 'Pick the apps, duration, and exceptions that match this moment. Access remains optional and reversible.',
   },
   {
     number: '02',
-    title: 'Boundaries stay human',
-    copy: 'You choose the apps, the time, and what may interrupt. Manual release remains visible and reversible.',
+    label: 'Broker',
+    title: 'Let local rules decide',
+    copy: 'Incoming notifications meet your deterministic policy first. AI can advise, but it never gets the final say.',
   },
   {
     number: '03',
-    title: 'AI stays advisory',
-    copy: 'Qwen provides structured guidance behind a protected Edge Function. Deterministic policy makes the final call.',
+    label: 'Review',
+    title: 'Return on your terms',
+    copy: 'What can wait stays organized for deliberate review, without asking senders or teams to change apps.',
   },
 ];
 
 const latestUpdates = (await getCollection('updates'))
-  .sort((left, right) => right.data.date.valueOf() - left.data.date.valueOf() || left.data.title.localeCompare(right.data.title))
-  .slice(0, 3);
+  .sort(
+    (left, right) =>
+      right.data.date.valueOf() - left.data.date.valueOf() ||
+      left.data.title.localeCompare(right.data.title),
+  )
+  .slice(0, 2);
 
 const now = new Date();
 let health = createFallbackSnapshot(now);
@@ -47,7 +47,7 @@ try {
     now,
   );
 } catch {
-  // The public fallback already represents this as unknown without leaking build errors.
+  // The safe fallback reports unknown rather than carrying an old green state forward.
 }
 
 function label(value: string): string {
@@ -57,6 +57,23 @@ function label(value: string): string {
 function statusLabel(value: HealthStatus): string {
   return value === 'not_configured' ? 'Not configured' : label(value);
 }
+
+function formatDate(value: Date): string {
+  return new Intl.DateTimeFormat('en', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(value);
+}
+
+function formatTimestamp(value: string): string {
+  return `${new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }).format(new Date(value))} UTC`;
+}
 ---
 
 <BaseLayout>
@@ -64,49 +81,60 @@ function statusLabel(value: HealthStatus): string {
     <div class="shell hero-grid">
       <div class="hero-copy">
         <p class="eyebrow"><span>Android-first</span> · Receiver-owned attention</p>
-        <h1 id="hero-title">Own the<br /><em>interruption.</em></h1>
+        <h1 id="hero-title">Own the <em>interruption.</em></h1>
         <p class="hero-subtitle">{SITE_SUBTITLE}</p>
         <p class="hero-lede">
-          PAUSE adds a calm, private boundary above the apps you already use—holding what can
-          wait and making room for what matters now.
+          A calm boundary above the apps you already use. PAUSE helps hold what can wait, lets
+          your rules protect the moment, and keeps you in control of when attention returns.
         </p>
         <div class="hero-actions">
-          <a class="button button--primary" href="#product-film">
+          <a class="button button--primary" href="#product-demo">
             <span class="button-icon" aria-hidden="true">▶</span>
-            Watch the 45-second story
+            Watch the product demo
           </a>
           <a class="button button--secondary" href={withBase('/status/')}>
-            View system status
+            See release evidence
             <span aria-hidden="true">↗</span>
           </a>
         </div>
-        <p class="hero-footnote">
-          No auto-replies. No sender migration. No notification content in PAUSE-owned alerts.
-        </p>
+        <ul class="hero-assurances" aria-label="PAUSE product assurances">
+          <li><span aria-hidden="true"></span> Local rules first</li>
+          <li><span aria-hidden="true"></span> Reversible access</li>
+          <li><span aria-hidden="true"></span> No sender migration</li>
+        </ul>
       </div>
 
       <HeroBoundaryVisual />
     </div>
-    <div class="hero-rule" aria-hidden="true"><span></span></div>
   </section>
 
   <section class="proof-band" aria-labelledby="proof-title">
-    <div class="shell">
-      <div class="proof-heading">
-        <p class="eyebrow">Release evidence</p>
-        <h2 id="proof-title">Built past the prototype.</h2>
-        <p>Verified in the current mobile and backend release gates—not presented as live monitoring.</p>
+    <div class="shell proof-heading">
+      <div>
+        <p class="eyebrow">Current release record</p>
+        <h2 id="proof-title">Evidence, not adjectives.</h2>
       </div>
-      <dl class="proof-grid">
-        {
-          proof.map((item) => (
-            <div>
-              <dt>{item.label}</dt>
-              <dd>{item.value}</dd>
-            </div>
-          ))
-        }
-      </dl>
+      <p>
+        Point-in-time release gates are kept separate from live health checks, so every claim
+        carries the right clock.
+      </p>
+    </div>
+    <div class="shell proof-grid">
+      {
+        releaseEvidence.map((item) => (
+          <article>
+            <p>{item.label}</p>
+            <strong>{item.value}</strong>
+            <span>{item.detail}</span>
+            {item.href && (
+              <a href={item.href} target="_blank" rel="noreferrer">
+                Inspect build<span class="visually-hidden"> (opens in a new tab)</span>
+                <span aria-hidden="true">↗</span>
+              </a>
+            )}
+          </article>
+        ))
+      }
     </div>
   </section>
 
@@ -114,21 +142,24 @@ function statusLabel(value: HealthStatus): string {
     <div class="shell">
       <Reveal>
         <div class="story-intro">
-          <p class="eyebrow">A different layer</p>
-          <h2 id="story-title">Communication stays where it is.<br />Interruption becomes yours.</h2>
+          <p class="eyebrow">A boundary, not another inbox</p>
+          <h2 id="story-title">Communication stays where it is. Attention becomes yours.</h2>
           <p>
-            Existing apps still carry the conversation. PAUSE gives the receiver a deliberate
-            checkpoint between an incoming notification and their attention.
+            PAUSE does not replace the tools people already trust. It adds a receiver-controlled
+            checkpoint between an incoming notification and the moment it asks for.
           </p>
         </div>
       </Reveal>
 
       <div class="principle-grid">
         {
-          principles.map((principle, index) => (
-            <Reveal delay={index * 90}>
+          principles.map((principle) => (
+            <Reveal>
               <article class="principle-card">
-                <span class="principle-number" aria-hidden="true">{principle.number}</span>
+                <div class="principle-topline">
+                  <span class="principle-number" aria-hidden="true">{principle.number}</span>
+                  <span>{principle.label}</span>
+                </div>
                 <div class="principle-mark" aria-hidden="true"></div>
                 <h3>{principle.title}</h3>
                 <p>{principle.copy}</p>
@@ -140,23 +171,23 @@ function statusLabel(value: HealthStatus): string {
     </div>
   </section>
 
-  <section id="product-film" class="film-section section-pad" aria-labelledby="film-title">
+  <section id="product-demo" class="film-section section-pad" aria-labelledby="film-title">
     <div class="shell film-grid">
       <Reveal class="film-copy">
-        <p class="eyebrow">45-second product film</p>
-        <h2 id="film-title">The boundary,<br />in motion.</h2>
+        <p class="eyebrow"><span>Actual app UI</span> · 45 seconds</p>
+        <h2 id="film-title">See the boundary in motion.</h2>
         <p>
-          See receiver-controlled setup, a Deep Work boundary, a held notification, the Vault,
-          a calm digest, and fail-closed privacy controls working as one system.
+          Follow a Deep Work boundary from setup to held notification, calm review, digest, and
+          visible privacy controls. Playback stays entirely in your hands.
         </p>
-        <ul class="signal-list" aria-label="Product film chapters">
-          <li><span>01</span> Intentional monitoring</li>
-          <li><span>02</span> Deterministic boundaries</li>
-          <li><span>03</span> Calm review and digest</li>
-          <li><span>04</span> Visible privacy controls</li>
-        </ul>
+        <ol class="signal-list" aria-label="Product film chapters">
+          <li><span>00:00</span> Start a receiver-owned boundary</li>
+          <li><span>00:12</span> Apply deterministic local rules</li>
+          <li><span>00:25</span> Review the Vault and digest</li>
+          <li><span>00:37</span> Inspect privacy controls</li>
+        </ol>
       </Reveal>
-      <Reveal delay={120}>
+      <Reveal>
         <ProductVideo />
       </Reveal>
     </div>
@@ -167,12 +198,12 @@ function statusLabel(value: HealthStatus): string {
       <Reveal>
         <div class="section-heading-row">
           <div>
-            <p class="eyebrow">The product</p>
-            <h2 id="interface-title">Calm control,<br />not another feed.</h2>
+            <p class="eyebrow">Built for deliberate control</p>
+            <h2 id="interface-title">Quiet by design. Clear when it matters.</h2>
           </div>
           <p>
-            Android-first monitoring is opt-in and limited to apps the receiver selects. PAUSE
-            keeps the current boundary, held count, and manual controls clear.
+            Consent, boundaries, and recovery paths are visible in the interface—not buried in
+            settings or softened by vague language.
           </p>
         </div>
       </Reveal>
@@ -190,19 +221,19 @@ function statusLabel(value: HealthStatus): string {
             <figcaption><span>01</span> Consent stays reversible</figcaption>
           </figure>
         </Reveal>
-        <Reveal class="interface-shot" delay={90}>
+        <Reveal class="interface-shot">
           <figure>
             <img
               src={withBase('/images/Welcome_To_Pause_4.png')}
               width="358"
               height="790"
               loading="lazy"
-              alt="PAUSE onboarding screen stating that it does not read chat history, auto-reply, or message anyone"
+              alt="PAUSE onboarding screen explaining that it does not read chat history, auto-reply, or message anyone"
             />
             <figcaption><span>02</span> Not another messenger</figcaption>
           </figure>
         </Reveal>
-        <Reveal class="interface-shot" delay={180}>
+        <Reveal class="interface-shot">
           <figure>
             <img
               src={withBase('/images/Welcome_To_Pause_5.png')}
@@ -211,98 +242,95 @@ function statusLabel(value: HealthStatus): string {
               loading="lazy"
               alt="PAUSE onboarding screen explaining that notification access can be revoked at any time"
             />
-            <figcaption><span>03</span> Honest permission limits</figcaption>
+            <figcaption><span>03</span> Permission limits stay honest</figcaption>
           </figure>
         </Reveal>
       </div>
     </div>
   </section>
 
-  <section class="pulse-section section-pad" aria-labelledby="pulse-title">
-    <div class="shell pulse-grid">
-      <Reveal>
-        <div class="pulse-copy">
-          <p class="eyebrow">Public operating record</p>
-          <h2 id="pulse-title">Proof, with the right label.</h2>
-          <p>
-            Scheduled synthetic checks report backend reachability without touching real users.
-            Release tests and physical-device QA remain separate, so “green” keeps an honest meaning.
-          </p>
-          <a class="text-link" href={withBase('/status/')}>
-            Open the full health dashboard <span aria-hidden="true">→</span>
-          </a>
-        </div>
-      </Reveal>
-
-      <Reveal delay={100}>
-        <article class="health-preview">
-          <div class="health-preview__head">
-            <div>
-              <span class="health-kicker">System pulse</span>
-              <h3>Layered evidence</h3>
-            </div>
-            <span class="status-badge" data-health-status={health.overallStatus}>
-              <span aria-hidden="true"></span>
-              {statusLabel(health.overallStatus)}
-            </span>
-          </div>
-          <ul class="health-layers">
-            <li>
-              <span class="layer-icon layer-icon--focus" aria-hidden="true">L</span>
-              <div><strong>Live</strong><small>Auth, database/RLS, Edge availability</small></div>
-              <span>30 min</span>
-            </li>
-            <li>
-              <span class="layer-icon layer-icon--calm" aria-hidden="true">D</span>
-              <div><strong>Daily</strong><small>Qwen guidance and cleanup lifecycle</small></div>
-              <span>24 hrs</span>
-            </li>
-            <li>
-              <span class="layer-icon layer-icon--privacy" aria-hidden="true">R</span>
-              <div><strong>Release</strong><small>Tests, EAS build, native release gate</small></div>
-              <span>v0.1.0</span>
-            </li>
-          </ul>
-          <p class="health-preview__note">
-            Latest sample: <time datetime={health.generatedAt}>{new Intl.DateTimeFormat('en', {
-              dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC',
-            }).format(new Date(health.generatedAt))} UTC</time>. Runner or network ambiguity is reported as unknown.
-          </p>
-        </article>
-      </Reveal>
-    </div>
-  </section>
-
-  <section class="updates-preview section-pad" aria-labelledby="updates-title">
-    <div class="shell">
-      <div class="section-heading-row section-heading-row--compact">
-        <Reveal>
-          <div>
-            <p class="eyebrow">Build journal</p>
-            <h2 id="updates-title">Latest from PAUSE.</h2>
-          </div>
-        </Reveal>
-        <a class="text-link" href={withBase('/updates/')}>View all updates <span aria-hidden="true">→</span></a>
+  <section class="evidence-section section-pad" aria-labelledby="evidence-title">
+    <div class="shell evidence-heading">
+      <div>
+        <p class="eyebrow">Transparent by default</p>
+        <h2 id="evidence-title">A product record you can inspect.</h2>
       </div>
+      <p>
+        Synthetic health, release gates, architecture decisions, and build notes stay public—
+        with unknown and stale states shown instead of assumed away.
+      </p>
+    </div>
 
-      <div class="update-card-grid">
-        {latestUpdates.map((entry, index) => (
-          <Reveal delay={index * 90}>
-            <article class="update-preview-card">
+    <div class="shell evidence-grid">
+      <article
+        class="health-preview"
+        data-health-preview
+        data-health-status={health.overallStatus}
+        aria-labelledby="health-preview-title"
+      >
+        <div class="health-preview__head">
+          <div>
+            <span class="health-kicker">Latest scheduled sample</span>
+            <h3 id="health-preview-title">System evidence</h3>
+          </div>
+          <span class="status-badge" data-health-status={health.overallStatus}>
+            <span aria-hidden="true"></span>
+            {statusLabel(health.overallStatus)}
+          </span>
+        </div>
+        <ul class="health-layers">
+          <li>
+            <span class="layer-icon layer-icon--focus" aria-hidden="true">L</span>
+            <div><strong>Live</strong><small>Auth, database/RLS, Edge availability</small></div>
+            <span>30 min</span>
+          </li>
+          <li>
+            <span class="layer-icon layer-icon--calm" aria-hidden="true">D</span>
+            <div><strong>Daily</strong><small>AI guidance and cleanup lifecycle</small></div>
+            <span>24 hrs</span>
+          </li>
+          <li>
+            <span class="layer-icon layer-icon--privacy" aria-hidden="true">R</span>
+            <div><strong>Release</strong><small>Tests, build, and native release gate</small></div>
+            <span>point-in-time</span>
+          </li>
+        </ul>
+        <div class="health-preview__foot">
+          <p data-health-freshness>
+            {health.stale ? 'Frequent evidence is stale; current health is not assumed.' : 'Frequent evidence is within its freshness window.'}
+          </p>
+          <p>
+            Checked <time data-health-generated-at datetime={health.generatedAt}>{formatTimestamp(health.generatedAt)}</time>
+          </p>
+        </div>
+        <a class="text-link" href={withBase('/status/')}>
+          Open the full dashboard <span aria-hidden="true">→</span>
+        </a>
+      </article>
+
+      <div class="journal-preview">
+        <div class="journal-preview__head">
+          <div>
+            <span class="health-kicker">Build journal</span>
+            <h3>What changed, and why.</h3>
+          </div>
+          <a href={withBase('/updates/')} aria-label="View all PAUSE updates">All updates</a>
+        </div>
+        <div class="journal-list">
+          {latestUpdates.map((entry) => (
+            <article>
               <div class="update-meta">
                 <span>{label(entry.data.category)}</span>
-                <time datetime={entry.data.date.toISOString()}>
-                  {new Intl.DateTimeFormat('en', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(entry.data.date)}
-                </time>
+                <time datetime={entry.data.date.toISOString()}>{formatDate(entry.data.date)}</time>
               </div>
-              <h3>{entry.data.title}</h3>
+              <h4>{entry.data.title}</h4>
               <p>{entry.data.summary}</p>
               <a href={withBase(`/updates/${entry.id}/`)} aria-label={`Read ${entry.data.title}`}>
-                Read update <span aria-hidden="true">→</span>
+                Read entry <span aria-hidden="true">→</span>
               </a>
             </article>
-          </Reveal>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   </section>
@@ -310,11 +338,12 @@ function statusLabel(value: HealthStatus): string {
   <section class="closing-section" aria-labelledby="closing-title">
     <div class="shell closing-inner">
       <Reveal>
+        <img src={withBase('/brand/pause-mark.svg')} width="56" height="56" alt="" loading="lazy" />
         <p class="eyebrow">PAUSE AI</p>
-        <h2 id="closing-title">Your attention is not<br />an open endpoint.</h2>
-        <p>See how the system protects that boundary—and how we prove it is working.</p>
+        <h2 id="closing-title">Your attention is not an open endpoint.</h2>
+        <p>See the product in motion, then inspect the evidence behind it.</p>
         <div class="closing-actions">
-          <a class="button button--primary" href="#product-film">Watch the product film</a>
+          <a class="button button--primary" href="#product-demo">Watch the product demo</a>
           <a class="button button--secondary" href={withBase('/architecture/')}>Explore the architecture</a>
         </div>
       </Reveal>

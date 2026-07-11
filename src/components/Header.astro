@@ -7,11 +7,11 @@ interface Props {
 
 const { currentPath } = Astro.props;
 const links = [
-  { href: '/', label: 'Home', shortLabel: 'Home', accessibleLabel: 'Home' },
-  { href: '/status/', label: 'System status', shortLabel: 'Status', accessibleLabel: 'System status' },
-  { href: '/updates/', label: 'Updates', shortLabel: 'Updates', accessibleLabel: 'Updates' },
-  { href: '/architecture/', label: 'Architecture', shortLabel: 'Flow', accessibleLabel: 'Architecture flow' },
-  { href: '/privacy/', label: 'Privacy', shortLabel: 'Privacy', accessibleLabel: 'Privacy' },
+  { href: '/', label: 'Home', accessibleLabel: 'Home' },
+  { href: '/status/', label: 'Status', accessibleLabel: 'System status' },
+  { href: '/updates/', label: 'Updates', accessibleLabel: 'Updates' },
+  { href: '/architecture/', label: 'Architecture', accessibleLabel: 'Architecture flow' },
+  { href: '/privacy/', label: 'Privacy', accessibleLabel: 'Privacy' },
 ];
 
 function isCurrent(href: string): boolean {
@@ -24,7 +24,7 @@ function isCurrent(href: string): boolean {
 <header class="site-header">
   <div class="shell header-inner">
     <a class="brand" href={withBase('/')} aria-label={`${SITE_NAME} home`}>
-      <img src={withBase('/favicon.png')} width="36" height="36" alt="" />
+      <img src={withBase('/brand/pause-mark.svg')} width="40" height="40" alt="" />
       <span>{SITE_NAME}</span>
     </a>
 
@@ -38,13 +38,52 @@ function isCurrent(href: string): boolean {
                 aria-label={link.accessibleLabel}
                 aria-current={isCurrent(link.href) ? 'page' : undefined}
               >
-                <span class="nav-label-long">{link.label}</span>
-                <span class="nav-label-short" aria-hidden="true">{link.shortLabel}</span>
+                {link.label}
               </a>
             </li>
           ))
         }
       </ul>
     </nav>
+
+    <details class="mobile-nav">
+      <summary>
+        <span>Menu</span>
+        <span class="menu-icon" aria-hidden="true"><i></i><i></i></span>
+      </summary>
+      <nav aria-label="Mobile navigation">
+        <ul>
+          {
+            links.map((link, index) => (
+              <li>
+                <a
+                  href={withBase(link.href)}
+                  aria-label={link.accessibleLabel}
+                  aria-current={isCurrent(link.href) ? 'page' : undefined}
+                >
+                  <span aria-hidden="true">0{index + 1}</span>
+                  {link.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </details>
   </div>
 </header>
+
+<script>
+  const mobileMenus = document.querySelectorAll<HTMLDetailsElement>('.mobile-nav');
+
+  mobileMenus.forEach((menu) => {
+    const trigger = menu.querySelector<HTMLElement>('summary');
+
+    menu.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape' || !menu.open) return;
+      event.preventDefault();
+      menu.open = false;
+      trigger?.focus();
+    });
+  });
+</script>

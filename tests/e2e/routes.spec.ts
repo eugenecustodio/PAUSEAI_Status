@@ -31,6 +31,13 @@ function watchForUnexpectedRequests(page: Page): string[] {
   return unexpected;
 }
 
+async function visibleNavigation(page: Page) {
+  const desktop = page.getByRole('navigation', { name: 'Primary navigation' });
+  if (await desktop.isVisible()) return desktop;
+  await page.locator('.mobile-nav > summary').click();
+  return page.getByRole('navigation', { name: 'Mobile navigation' });
+}
+
 for (const route of routes) {
   test(`${route.path} is a direct-link-safe, semantic static route`, async ({ page }) => {
     const unexpectedRequests = watchForUnexpectedRequests(page);
@@ -44,7 +51,7 @@ for (const route of routes) {
     await expect(page.locator('main#main-content')).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(route.heading);
-    await expect(page.getByRole('navigation', { name: 'Primary navigation' })).toBeVisible();
+    await expect(await visibleNavigation(page)).toBeVisible();
 
     const duplicateIds = await page.locator('[id]').evaluateAll((elements) => {
       const counts = new Map<string, number>();
@@ -79,7 +86,7 @@ for (const route of routes) {
 
 test('the primary navigation keeps every destination under the project base', async ({ page }) => {
   await page.goto(directProjectPath('/'));
-  const navigation = page.getByRole('navigation', { name: 'Primary navigation' });
+  const navigation = await visibleNavigation(page);
 
   const expectedLinks = [
     ['Home', '/'],

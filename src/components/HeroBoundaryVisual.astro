@@ -2,90 +2,102 @@
 const notificationCards = [
   {
     source: 'Team chat',
-    title: '4 notifications held',
-    detail: 'Available after your boundary',
-    tone: 'calm',
+    title: 'Project thread',
+    outcome: 'Held',
+    tone: 'held',
+    icon: 'T',
   },
   {
     source: 'Calendar',
-    title: 'Starts in 10 minutes',
-    detail: 'Allowed by your policy',
-    tone: 'focus',
+    title: 'Focus block ending',
+    outcome: 'Allowed',
+    tone: 'allowed',
+    icon: 'C',
   },
   {
-    source: 'Account security',
-    title: 'Review requested',
-    detail: 'Allowed through now',
-    tone: 'alert',
+    source: 'Social',
+    title: 'New activity',
+    outcome: 'Held',
+    tone: 'held',
+    icon: 'S',
   },
 ] as const;
 ---
 
-<figure
-  class="boundary-visual"
-  aria-label="Incoming app notifications meet a receiver-controlled PAUSE boundary"
->
+<figure class="boundary-visual" aria-labelledby="boundary-visual-caption">
   <div class="boundary-grid" aria-hidden="true"></div>
-  <div class="visual-status">
-    <span class="status-pulse" aria-hidden="true"></span>
-    Boundary active
+  <div class="visual-toolbar" aria-hidden="true">
+    <div class="visual-status">
+      <span class="status-pulse"></span>
+      Deep Work active
+    </div>
+    <span class="visual-time">42:18</span>
   </div>
 
-  <div class="notification-stack" aria-hidden="true">
-    {notificationCards.map((card, index) => (
-      <div class:list={['notification-card', `notification-card--${card.tone}`]} style={`--card-order: ${index}`}>
-        <div class="notification-icon">{index + 1}</div>
-        <div>
-          <span>{card.source}</span>
-          <strong>{card.title}</strong>
-          <small>{card.detail}</small>
+  <div class="boundary-stage" aria-hidden="true">
+    <div class="notification-stack">
+      {notificationCards.map((card, index) => (
+        <div class:list={['notification-card', `notification-card--${card.tone}`]} style={`--card-order: ${index}`}>
+          <div class="notification-icon">{card.icon}</div>
+          <div class="notification-copy">
+            <span>{card.source}</span>
+            <strong>{card.title}</strong>
+          </div>
+          <small>{card.outcome}</small>
         </div>
-      </div>
-    ))}
-  </div>
+      ))}
+    </div>
 
-  <div class="boundary-line" aria-hidden="true"><span>PAUSE</span></div>
+    <div class="boundary-line">
+      <span>YOUR POLICY</span>
+    </div>
+  </div>
 
   <div class="visual-outcome" aria-hidden="true">
-    <span>Interruption policy</span>
-    <strong>Receiver controlled</strong>
-    <small>AI advises. Your rules decide.</small>
+    <div>
+      <span>Held quietly</span>
+      <strong>7</strong>
+    </div>
+    <div>
+      <span>Allowed through</span>
+      <strong>2</strong>
+    </div>
+    <p><span></span> Local rules remain in control</p>
   </div>
+
+  <figcaption id="boundary-visual-caption" class="visually-hidden">
+    A Deep Work boundary holds low-priority notifications while allowing a calendar reminder
+    through according to the receiver’s policy.
+  </figcaption>
 </figure>
 
 <style>
   .notification-card {
-    animation: card-arrival 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: calc(var(--card-order) * 110ms + 120ms);
-    will-change: transform, opacity;
+    animation: card-arrival 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: calc(var(--card-order) * 90ms + 100ms);
   }
 
-  .boundary-line {
-    animation: boundary-breathe 3.2s ease-in-out 900ms infinite;
-    will-change: opacity;
+  .status-pulse {
+    animation: status-breathe 2.8s ease-in-out infinite;
   }
 
   @keyframes card-arrival {
     from {
-      opacity: 0;
-      transform: translate3d(-24px, 10px, 0);
+      transform: translate3d(-18px, 8px, 0);
     }
     to {
-      opacity: 1;
       transform: translate3d(0, 0, 0);
     }
   }
 
-  @keyframes boundary-breathe {
-    0%, 100% { opacity: 0.72; }
-    50% { opacity: 1; }
+  @keyframes status-breathe {
+    50% { box-shadow: 0 0 0 8px rgb(168 197 165 / 0); }
   }
 
   @media (prefers-reduced-motion: reduce) {
     .notification-card,
-    .boundary-line {
+    .status-pulse {
       animation: none;
-      will-change: auto;
     }
   }
 </style>

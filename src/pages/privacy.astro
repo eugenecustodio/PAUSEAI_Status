@@ -4,90 +4,265 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <BaseLayout
   title="Privacy"
-  description="The privacy boundaries behind the PAUSE AI app and this public status website."
+  description="A plain-language overview of the privacy boundaries in the PAUSE AI app and this public status website."
 >
   <section class="page-hero shell" aria-labelledby="privacy-title">
-      <p class="eyebrow">Privacy model</p>
-      <h1 id="privacy-title">A boundary should respect yours.</h1>
-      <p class="lede">
-        PAUSE is built to reduce interruption without becoming another place that reads, replies, or follows you around.
-      </p>
+    <p class="eyebrow">Privacy overview · reviewed 11 July 2026</p>
+    <h1 id="privacy-title">A boundary should respect yours.</h1>
+    <p class="lede">
+      PAUSE is designed to reduce interruption without becoming another place that reads, replies, or follows
+      you around. This page explains the product and website boundaries in plain language.
+    </p>
   </section>
 
-  <section class="shell promise-grid" aria-label="Core privacy promises">
-      <article>
-        <span class="promise-number">01</span>
-        <h2>Not a messenger</h2>
-        <p>PAUSE does not send messages or auto-reply inside other apps. It brokers notification delivery.</p>
-      </article>
-      <article>
-        <span class="promise-number">02</span>
-        <h2>AI is optional</h2>
-        <p>Cloud AI requires an explicit account preference. Local policy remains available when it is off.</p>
-      </article>
-      <article>
-        <span class="promise-number">03</span>
-        <h2>Retention is controlled</h2>
-        <p>Preview retention is a visible setting. Zero-hour retention means synthetic health previews must remain null.</p>
-      </article>
-      <article>
-        <span class="promise-number">04</span>
-        <h2>Deletion is testable</h2>
-        <p>Cloud deletion is part of the daily synthetic lifecycle and is reported separately from availability.</p>
-      </article>
-  </section>
-
-  <section class="shell site-privacy" aria-labelledby="site-privacy-title">
+  <section class="shell privacy-at-a-glance" aria-labelledby="glance-title">
+    <div class="section-heading">
+      <p class="eyebrow">At a glance</p>
+      <h2 id="glance-title">Local first. Cloud by choice. No hidden website tracker.</h2>
+    </div>
+    <dl>
       <div>
-        <p class="eyebrow">This website</p>
-        <h2 id="site-privacy-title">Static by design</h2>
+        <dt>Notification action</dt>
+        <dd>Deterministic policy on the Android device stays authoritative.</dd>
       </div>
-      <div class="site-copy">
+      <div>
+        <dt>Cloud AI</dt>
+        <dd>Off by default and used only after an explicit account preference.</dd>
+      </div>
+      <div>
+        <dt>Website analytics</dt>
+        <dd>None added by PAUSE. GitHub Pages still handles ordinary web requests.</dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="shell privacy-layers" aria-label="Privacy boundaries">
+    <article aria-labelledby="app-data-title">
+      <div class="layer-label"><span>01</span> Android app</div>
+      <div class="layer-copy">
+        <h2 id="app-data-title">The app sees only what you authorize</h2>
         <p>
-          This public site has no analytics, advertising, contact form, account system, tracking pixel, or browser-side Supabase client.
-          It does not collect visitor data.
+          Android notification access and monitored-app selection are explicit setup steps. PAUSE uses those
+          signals to broker delivery; it does not send messages or auto-reply inside other apps.
         </p>
         <p>
-          GitHub Actions runs a dedicated synthetic health account away from visitors. Only an allowlisted snapshot is published:
-          component state, evidence type, safe summary, timestamps, optional latency, and approved public error codes.
-        </p>
-        <p>
-          The snapshot never includes email addresses, user IDs, tokens, provider responses, exception text, notification content,
-          or secret values. A network-ambiguous run is labelled unknown—not rewritten as an outage or a false green check.
+          Active boundaries, rules, exceptions, and private vault state are handled locally. SecureStore protects
+          sensitive device credentials, while SQLite keeps local behavior available when the network is not.
         </p>
       </div>
+    </article>
+
+    <article aria-labelledby="cloud-data-title">
+      <div class="layer-label"><span>02</span> Account and cloud</div>
+      <div class="layer-copy">
+        <h2 id="cloud-data-title">Cloud processing has separate gates</h2>
+        <p>
+          Signing in enables owner-scoped synchronization such as account presets. Supabase Row Level Security
+          limits cloud rows to the authenticated owner. Cloud AI is a separate preference, defaults to off, and
+          sends eligible content through authenticated Edge Functions only when enabled.
+        </p>
+        <p>
+          AI output is advisory. Edge Functions keep provider credentials off-device, and deterministic policy
+          decides the final notification action if the provider is unavailable, uncertain, or disabled.
+        </p>
+      </div>
+    </article>
+
+    <article aria-labelledby="control-title">
+      <div class="layer-label"><span>03</span> Your controls</div>
+      <div class="layer-copy">
+        <h2 id="control-title">Retention and deletion are visible actions</h2>
+        <p>
+          Notification-preview retention is configurable. Zero-hour retention prevents preview text from being
+          retained in cloud records and excludes it from digest guidance. Turning Cloud AI off stops new optional
+          AI processing.
+        </p>
+        <p>
+          Cloud-data deletion and account deletion cover synchronized records, including saved boundary presets.
+          The public health check tests deletion with dedicated synthetic accounts; it never uses a visitor account.
+        </p>
+      </div>
+    </article>
+
+    <article aria-labelledby="website-title">
+      <div class="layer-label"><span>04</span> This website</div>
+      <div class="layer-copy">
+        <h2 id="website-title">Static and tracker-free by PAUSE—not invisible to its host</h2>
+        <p>
+          PAUSE adds no analytics, advertising pixels, marketing cookies, contact form, account system, or
+          browser-side Supabase client to this site. Filtering the Updates page happens in your browser and does
+          not send the selection anywhere.
+        </p>
+        <p>
+          The site is hosted on GitHub Pages. Like an ordinary web host, GitHub may receive and process request
+          data such as an IP address, browser or device headers, requested URL, and timestamps to deliver and
+          secure the service. GitHub controls that hosting activity under its
+          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" rel="noreferrer">
+            General Privacy Statement <span aria-hidden="true">↗</span>
+          </a>.
+        </p>
+      </div>
+    </article>
   </section>
 
   <section class="shell evidence-note" aria-labelledby="evidence-note-title">
-      <p class="eyebrow">Evidence language</p>
-      <h2 id="evidence-note-title">What the dashboard can—and cannot—prove</h2>
+    <div>
+      <p class="eyebrow">Public status data</p>
+      <h2 id="evidence-note-title">Evidence is deliberately narrow</h2>
+    </div>
+    <div>
       <p>
-        “Live” means a recent synthetic Auth, RLS, or Edge availability check. “Daily” means the last full Qwen and cleanup lifecycle.
-        “Release” records a verified build gate. “Manual pending” is work that still needs a physical Android device or OEM-specific review.
-        These are probe results, not a contractual uptime guarantee.
+        GitHub Actions runs a dedicated synthetic health account away from visitors. The published snapshot is
+        allowlisted to component state, evidence type, safe summary, timestamps, optional latency, and approved
+        public error codes.
       </p>
+      <p>
+        It excludes email addresses, user IDs, tokens, provider responses, exception text, notification content,
+        and secret values. “Live,” “daily,” and “release” describe evidence freshness—not a contractual uptime or
+        privacy guarantee.
+      </p>
+    </div>
   </section>
+
+  <p class="shell overview-note">
+    This is a product privacy overview, not a substitute for a formal legal notice. It will be updated as the
+    application, hosting, or data paths change.
+  </p>
 </BaseLayout>
 
 <style>
-  .page-hero { padding-block: clamp(7rem, 16vw, 12rem) 4rem; max-width: 960px; }
-  .page-hero h1 { max-width: 12ch; }
-  .promise-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; padding-block: 2rem 8rem; }
-  .promise-grid article { min-height: 270px; padding: 2rem; border: 1px solid var(--color-line); background: var(--color-surface); }
-  .promise-grid article:nth-child(1) { border-radius: var(--radius-xl) 0 0 0; }
-  .promise-grid article:nth-child(2) { border-radius: 0 var(--radius-xl) 0 0; }
-  .promise-grid article:nth-child(3) { border-radius: 0 0 0 var(--radius-xl); }
-  .promise-grid article:nth-child(4) { border-radius: 0 0 var(--radius-xl) 0; }
-  .promise-number { color: var(--color-privacy); font: .78rem var(--font-mono); }
-  .promise-grid h2 { margin-top: 3.5rem; }
-  .promise-grid p, .site-copy p, .evidence-note p { max-width: 60ch; color: var(--color-muted); line-height: 1.75; }
-  .site-privacy { display: grid; grid-template-columns: .7fr 1.3fr; gap: 3rem; padding-block: 4rem 9rem; }
-  .site-copy { display: grid; gap: 1rem; }
-  .evidence-note { margin-bottom: 8rem; padding: clamp(1.5rem, 4vw, 3rem); border: 1px solid var(--color-line); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--color-privacy) 8%, var(--color-surface)); }
-  @media (max-width: 700px) {
-    .promise-grid, .site-privacy { grid-template-columns: 1fr; }
-    .promise-grid article { border-radius: 0 !important; }
-    .promise-grid article:first-child { border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important; }
-    .promise-grid article:last-child { border-radius: 0 0 var(--radius-xl) var(--radius-xl) !important; }
+  .page-hero {
+    max-width: 980px;
+    padding-block: clamp(5rem, 10vw, 8rem) clamp(3.5rem, 7vw, 6rem);
+  }
+
+  .page-hero h1 {
+    max-width: 12ch;
+  }
+
+  .privacy-at-a-glance {
+    padding-block: clamp(3rem, 6vw, 5rem);
+  }
+
+  .section-heading {
+    max-width: 780px;
+    margin-bottom: 2rem;
+  }
+
+  .privacy-at-a-glance dl {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface);
+  }
+
+  .privacy-at-a-glance dl > div {
+    min-height: 180px;
+    padding: 1.5rem;
+    border-right: 1px solid var(--color-line);
+  }
+
+  .privacy-at-a-glance dl > div:last-child {
+    border-right: 0;
+  }
+
+  dt,
+  .layer-label {
+    color: var(--color-privacy);
+    font: 0.7rem/1.45 var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin-top: 2.2rem;
+    color: var(--color-soft);
+    line-height: 1.65;
+  }
+
+  .privacy-layers {
+    padding-block: clamp(4rem, 8vw, 7rem);
+  }
+
+  .privacy-layers article {
+    display: grid;
+    grid-template-columns: minmax(170px, 0.45fr) minmax(0, 1.55fr);
+    gap: 2rem;
+    padding-block: clamp(2.5rem, 5vw, 4.5rem);
+    border-top: 1px solid var(--color-line);
+  }
+
+  .privacy-layers article:last-child {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .layer-label span {
+    display: inline-grid;
+    width: 2rem;
+    height: 2rem;
+    margin-right: 0.5rem;
+    place-items: center;
+    border: 1px solid var(--color-line);
+    border-radius: 50%;
+  }
+
+  .layer-copy h2 {
+    max-width: 20ch;
+  }
+
+  .layer-copy p,
+  .evidence-note p {
+    max-width: 70ch;
+    color: var(--color-muted);
+    line-height: 1.78;
+  }
+
+  .layer-copy a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--color-calm);
+  }
+
+  .evidence-note {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+    gap: 2rem 3rem;
+    padding: clamp(1.5rem, 4vw, 3rem);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-xl);
+    background: color-mix(in srgb, var(--color-privacy) 8%, var(--color-surface));
+  }
+
+  .overview-note {
+    margin-block: 1.2rem clamp(6rem, 10vw, 9rem);
+    color: var(--color-dim);
+    font: 0.72rem/1.7 var(--font-mono);
+  }
+
+  @media (max-width: 760px) {
+    .privacy-at-a-glance dl,
+    .privacy-layers article,
+    .evidence-note {
+      grid-template-columns: 1fr;
+    }
+
+    .privacy-at-a-glance dl > div {
+      min-height: 0;
+      border-right: 0;
+      border-bottom: 1px solid var(--color-line);
+    }
+
+    .privacy-at-a-glance dl > div:last-child {
+      border-bottom: 0;
+    }
+
+    dd {
+      margin-top: 1.2rem;
+    }
   }
 </style>

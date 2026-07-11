@@ -11,6 +11,7 @@ const routes = [
   { path: '/updates/five-day-build-milestone/', heading: /Five days from idea/i },
   { path: '/updates/privacy-hardening/', heading: /Privacy controls now fail closed/i },
   { path: '/updates/version-code-4-aab/', heading: /versionCode 4 production AAB/i },
+  { path: '/updates/version-code-5-account-presets/', heading: /Account-synced presets verified/i },
   { path: '/architecture/', heading: /AI advises\. Your boundary decides/i },
   { path: '/privacy/', heading: /A boundary should respect yours/i },
 ] as const;
@@ -94,4 +95,26 @@ test('the primary navigation keeps every destination under the project base', as
       directProjectPath(path),
     );
   }
+});
+
+test('the branded 404 is noindex and offers base-safe recovery links', async ({ page }) => {
+  const response = await page.goto(directProjectPath('/not-a-real-route/'));
+
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/not part of the signal/i);
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
+
+  const recovery = page.getByRole('navigation', { name: 'Page recovery' });
+  await expect(recovery.getByRole('link', { name: /Go home/i })).toHaveAttribute(
+    'href',
+    directProjectPath('/'),
+  );
+  await expect(recovery.getByRole('link', { name: 'Check system status' })).toHaveAttribute(
+    'href',
+    directProjectPath('/status/'),
+  );
+  await expect(recovery.getByRole('link', { name: 'Read updates' })).toHaveAttribute(
+    'href',
+    directProjectPath('/updates/'),
+  );
 });

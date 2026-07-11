@@ -1,0 +1,92 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { withBase } from '../lib/site';
+---
+
+<BaseLayout
+  title="Page not found"
+  description="The requested PAUSE AI status page could not be found."
+  noIndex={true}
+>
+  <section class="not-found shell" aria-labelledby="not-found-title">
+    <div class="error-code" aria-hidden="true">404</div>
+    <div class="not-found-copy">
+      <p class="eyebrow">Outside the boundary</p>
+      <h1 id="not-found-title">This page is not part of the signal.</h1>
+      <p class="lede">
+        The address may have changed, or the link may be incomplete. Nothing is broken on your device.
+      </p>
+      <nav class="recovery-links" aria-label="Page recovery">
+        <a class="button button--primary" href={withBase('/')}>
+          Go home <span class="button-icon" aria-hidden="true">→</span>
+        </a>
+        <a class="button button--secondary" href={withBase('/status/')}>Check system status</a>
+        <a class="button button--secondary" href={withBase('/updates/')}>Read updates</a>
+      </nav>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .not-found {
+    display: grid;
+    min-height: calc(100svh - 76px);
+    grid-template-columns: minmax(220px, 0.75fr) minmax(0, 1.25fr);
+    gap: clamp(2rem, 7vw, 7rem);
+    align-items: center;
+    padding-block: clamp(5rem, 10vw, 9rem);
+  }
+
+  .error-code {
+    color: color-mix(in srgb, var(--color-calm) 8%, transparent);
+    font-family: var(--font-mono);
+    font-size: clamp(7rem, 22vw, 18rem);
+    letter-spacing: -0.1em;
+    line-height: 0.75;
+    -webkit-text-stroke: 1px var(--color-line);
+  }
+
+  .not-found-copy {
+    position: relative;
+  }
+
+  .not-found-copy::before {
+    position: absolute;
+    top: -2rem;
+    left: -2rem;
+    width: 4rem;
+    height: 1px;
+    background: var(--color-focus);
+    content: '';
+  }
+
+  h1 {
+    max-width: 12ch;
+  }
+
+  .lede {
+    max-width: 54ch;
+  }
+
+  .recovery-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-top: 2rem;
+  }
+
+  @media (max-width: 720px) {
+    .not-found {
+      min-height: auto;
+      grid-template-columns: 1fr;
+    }
+
+    .error-code {
+      font-size: clamp(6rem, 35vw, 10rem);
+    }
+
+    .not-found-copy::before {
+      display: none;
+    }
+  }
+</style>

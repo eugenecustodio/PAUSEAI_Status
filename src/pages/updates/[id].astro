@@ -2,6 +2,7 @@
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { withBase } from '../../lib/site';
+import { formatUpdateDate, humanizeUpdateValue, sortUpdates } from '../../lib/updates';
 
 export async function getStaticPaths() {
   const entries = await getCollection('updates');
@@ -17,6 +18,13 @@ interface Props {
 
 const { entry } = Astro.props;
 const { Content } = await render(entry);
+const updates = sortUpdates(await getCollection('updates'));
+const currentIndex = updates.findIndex((update) => update.id === entry.id);
+const newerUpdate = currentIndex > 0 ? updates[currentIndex - 1] : undefined;
+const olderUpdate = currentIndex >= 0 ? updates[currentIndex + 1] : undefined;
+const relatedUpdates = updates
+  .filter((update) => update.id !== entry.id && update.data.category === entry.data.category)
+  .slice(0, 2);
 ---
 
 <BaseLayout title={entry.data.title} description={entry.data.summary}>
@@ -24,10 +32,12 @@ const { Content } = await render(entry);
       <a class="back-link" href={withBase('/updates/')}><span aria-hidden="true">←</span> All updates</a>
       <header class="article-header">
         <div class="article-meta">
-          <span>{entry.data.category}</span>
-          <span>{entry.data.status}</span>
+          <span>{humanizeUpdateValue(entry.data.category)}</span>
+          <span class="article-status" data-status={entry.data.status}>
+            {humanizeUpdateValue(entry.data.status)}
+          </span>
           <time datetime={entry.data.date.toISOString()}>
-            {entry.data.date.toLocaleDateString('en', { dateStyle: 'long', timeZone: 'UTC' })}
+            {formatUpdateDate(entry.data.date)}
           </time>
         </div>
         <h1>{entry.data.title}</h1>
@@ -49,14 +59,49 @@ const { Content } = await render(entry);
           </ul>
         </aside>
       ) : null}
+
+      {relatedUpdates.length ? (
+        <aside class="related-updates" aria-labelledby="related-title">
+          <p class="eyebrow" id="related-title">Related {humanizeUpdateValue(entry.data.category)} notes</p>
+          <ul>
+            {relatedUpdates.map((related) => (
+              <li>
+                <time datetime={related.data.date.toISOString()}>{formatUpdateDate(related.data.date)}</time>
+                <a href={withBase(`/updates/${related.id}/`)}>{related.data.title}</a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      ) : null}
+
+      {(newerUpdate || olderUpdate) && (
+        <nav class="update-pagination" aria-label="Update chronology">
+          {newerUpdate ? (
+            <a href={withBase(`/updates/${newerUpdate.id}/`)}>
+              <span>← Newer update</span>
+              <strong>{newerUpdate.data.title}</strong>
+            </a>
+          ) : <span />}
+          {olderUpdate ? (
+            <a class="older" href={withBase(`/updates/${olderUpdate.id}/`)}>
+              <span>Older update →</span>
+              <strong>{olderUpdate.data.title}</strong>
+            </a>
+          ) : <span />}
+        </nav>
+      )}
   </article>
 </BaseLayout>
 
 <style>
-  .article-shell { max-width: 880px; padding-block: 8rem; }
-  .back-link { display: inline-flex; gap: .5rem; margin-bottom: 4rem; color: var(--color-muted); }
+  .article-shell { max-width: 920px; padding-block: clamp(5rem, 10vw, 8rem); }
+  .back-link { display: inline-flex; min-height: 44px; align-items: center; gap: .5rem; margin-bottom: clamp(2.5rem, 6vw, 4rem); color: var(--color-muted); }
   .article-header { padding-bottom: 3rem; border-bottom: 1px solid var(--color-line); }
   .article-meta { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; color: var(--color-privacy); font: .78rem/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: .08em; }
+  .article-status { display: inline-flex; align-items: center; gap: .45rem; }
+  .article-status::before { width: .45rem; height: .45rem; border: 1px solid currentcolor; border-radius: 50%; content: ''; }
+  .article-status[data-status='in_progress'] { color: var(--color-focus); }
+  .article-status[data-status='pending'] { color: var(--color-alert); }
   .article-header h1 { max-width: 15ch; margin-block: 1.5rem; }
   .byline { color: var(--color-muted); }
   .prose { max-width: 720px; padding-block: 3rem; }
@@ -65,4 +110,21 @@ const { Content } = await render(entry);
   .prose :global(a) { text-decoration: underline; text-underline-offset: .2em; }
   .evidence-links { margin-top: 2rem; padding: 1.5rem; border: 1px solid var(--color-line); border-radius: var(--radius-lg); background: var(--color-surface); }
   .evidence-links ul { display: grid; gap: .75rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+  .evidence-links a { display: inline-flex; min-height: 44px; align-items: center; gap: .45rem; color: var(--color-calm); }
+  .related-updates { margin-top: 4rem; padding-top: 2rem; border-top: 1px solid var(--color-line); }
+  .related-updates ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+  .related-updates li { display: flex; min-height: 132px; flex-direction: column; gap: .6rem; padding: 1.2rem; border: 1px solid var(--color-line); border-radius: var(--radius-md); background: var(--color-surface); }
+  .related-updates time { color: var(--color-muted); font: .7rem/1.5 var(--font-mono); }
+  .related-updates a { display: inline-flex; min-height: 44px; align-items: center; font-size: 1.05rem; line-height: 1.4; text-decoration: none; }
+  .update-pagination { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
+  .update-pagination a { display: flex; min-height: 128px; flex-direction: column; justify-content: center; gap: .7rem; padding: 1.2rem; border: 1px solid var(--color-line); border-radius: var(--radius-md); text-decoration: none; }
+  .update-pagination a:hover { border-color: var(--color-privacy); }
+  .update-pagination span { color: var(--color-privacy); font: .7rem/1.4 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
+  .update-pagination strong { font-size: 1rem; line-height: 1.45; }
+  .update-pagination .older { text-align: right; }
+  @media (max-width: 640px) {
+    .related-updates ul, .update-pagination { grid-template-columns: 1fr; }
+    .update-pagination > span { display: none; }
+    .update-pagination .older { text-align: left; }
+  }
 </style>

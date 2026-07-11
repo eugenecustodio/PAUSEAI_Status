@@ -1,4 +1,3 @@
-import react from '@astrojs/react';
 import sitemap from '@astrojs/sitemap';
 import { defineConfig } from 'astro/config';
 
@@ -7,7 +6,7 @@ export default defineConfig({
   base: '/PAUSEAI_Status',
   output: 'static',
   trailingSlash: 'always',
-  integrations: [react(), sitemap()],
+  integrations: [sitemap()],
   build: {
     assets: '_assets',
   },

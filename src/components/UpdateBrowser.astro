@@ -1,0 +1,301 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { formatUpdateDate, humanizeUpdateValue } from '../lib/updates';
+import { withBase } from '../lib/site';
+
+interface Props {
+  updates: CollectionEntry<'updates'>[];
+}
+
+const { updates } = Astro.props;
+const categories = [...new Set(updates.map((update) => update.data.category))].sort((a, b) =>
+  humanizeUpdateValue(a).localeCompare(humanizeUpdateValue(b), 'en'),
+);
+---
+
+<div class="updates-browser" data-update-browser>
+  <template data-filter-template>
+    <div class="filter-tools" data-filter-tools>
+      <div class="filter-row" role="group" aria-label="Filter updates by category">
+        <button class="filter-chip" type="button" data-filter="all" aria-pressed="true">All</button>
+        {
+          categories.map((category) => (
+            <button class="filter-chip" type="button" data-filter={category} aria-pressed="false">
+              {humanizeUpdateValue(category)}
+            </button>
+          ))
+        }
+      </div>
+      <p class="filter-result" data-filter-result role="status" aria-live="polite" aria-atomic="true">
+        {updates.length} updates available.
+      </p>
+    </div>
+  </template>
+
+  <div class="updates-grid" data-update-list>
+    {
+      updates.map((update) => (
+        <article class="update-card" data-update-card data-category={update.data.category}>
+          <div class="update-meta">
+            <span class="update-category">{humanizeUpdateValue(update.data.category)}</span>
+            <span class="update-status" data-status={update.data.status}>
+              {humanizeUpdateValue(update.data.status)}
+            </span>
+          </div>
+          <p class="update-date">
+            <time datetime={update.data.date.toISOString()}>{formatUpdateDate(update.data.date)}</time>
+          </p>
+          <h2>
+            <a href={withBase(`/updates/${update.id}/`)}>{update.data.title}</a>
+          </h2>
+          <p>{update.data.summary}</p>
+          <div class="update-card-footer">
+            <span>{update.data.authorLabel}</span>
+            <a href={withBase(`/updates/${update.id}/`)} aria-label={`Read ${update.data.title}`}>
+              Read update <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</div>
+
+<script>
+  const browsers = document.querySelectorAll<HTMLElement>('[data-update-browser]');
+
+  for (const browser of browsers) {
+    const template = browser.querySelector<HTMLTemplateElement>('[data-filter-template]');
+    const list = browser.querySelector<HTMLElement>('[data-update-list]');
+    if (!template || !list) continue;
+
+    list.before(template.content.cloneNode(true));
+    const tools = browser.querySelector<HTMLElement>('[data-filter-tools]');
+    const buttons = [...browser.querySelectorAll<HTMLButtonElement>('[data-filter]')];
+    const cards = [...browser.querySelectorAll<HTMLElement>('[data-update-card]')];
+    const result = browser.querySelector<HTMLElement>('[data-filter-result]');
+
+    if (!tools || !buttons.length || !result) continue;
+    const selectFilter = (button: HTMLButtonElement) => {
+      const category = button.dataset.filter ?? 'all';
+      let visibleCount = 0;
+
+      for (const card of cards) {
+        const visible = category === 'all' || card.dataset.category === category;
+        card.hidden = !visible;
+        if (visible) visibleCount += 1;
+      }
+
+      for (const candidate of buttons) {
+        candidate.setAttribute('aria-pressed', String(candidate === button));
+      }
+
+      const label = button.textContent?.trim() ?? 'selected';
+      result.textContent =
+        category === 'all'
+          ? `${visibleCount} updates shown.`
+          : `${visibleCount} ${label.toLocaleLowerCase()} ${visibleCount === 1 ? 'update' : 'updates'} shown.`;
+    };
+
+    buttons.forEach((button, index) => {
+      button.addEventListener('click', () => selectFilter(button));
+      button.addEventListener('keydown', (event) => {
+        const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+        if (!keys.includes(event.key)) return;
+
+        event.preventDefault();
+        let nextIndex = index;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = buttons.length - 1;
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          nextIndex = (index - 1 + buttons.length) % buttons.length;
+        }
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          nextIndex = (index + 1) % buttons.length;
+        }
+
+        buttons[nextIndex]?.focus();
+        buttons[nextIndex]?.click();
+      });
+    });
+  }
+</script>
+
+<style>
+  .updates-browser {
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 2.5rem);
+  }
+
+  .filter-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 2rem;
+  }
+
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .filter-chip {
+    min-height: 44px;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    color: var(--color-soft);
+    background: var(--color-surface);
+    font: 0.76rem/1 var(--font-mono);
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+  }
+
+  .filter-chip:hover {
+    border-color: var(--color-privacy);
+  }
+
+  .filter-chip[aria-pressed='true'] {
+    border-color: var(--color-calm);
+    color: var(--color-bg);
+    background: var(--color-calm);
+  }
+
+  .filter-result {
+    margin: 0;
+    color: var(--color-muted);
+    font: 0.72rem/1.5 var(--font-mono);
+    white-space: nowrap;
+  }
+
+  .updates-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .update-card {
+    display: flex;
+    min-height: 330px;
+    flex-direction: column;
+    padding: clamp(1.3rem, 3vw, 2rem);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+
+  .update-card[hidden] {
+    display: none;
+  }
+
+  .update-meta,
+  .update-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .update-meta {
+    margin: 0;
+  }
+
+  .update-category,
+  .update-status,
+  .update-date,
+  .update-card-footer {
+    font: 0.72rem/1.4 var(--font-mono);
+  }
+
+  .update-category {
+    color: var(--color-privacy);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .update-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-muted);
+  }
+
+  .update-status::before {
+    width: 0.45rem;
+    height: 0.45rem;
+    border: 1px solid currentcolor;
+    border-radius: 50%;
+    content: '';
+  }
+
+  .update-status[data-status='complete'] {
+    color: var(--color-calm);
+  }
+
+  .update-status[data-status='in_progress'] {
+    color: var(--color-focus);
+  }
+
+  .update-status[data-status='pending'] {
+    color: var(--color-alert);
+  }
+
+  .update-date {
+    margin-block: 2.2rem 0.7rem;
+    color: var(--color-muted);
+  }
+
+  .update-card h2 {
+    margin: 0;
+    font-size: clamp(1.45rem, 3vw, 2rem);
+    line-height: 1.12;
+  }
+
+  .update-card h2 a {
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  .update-card > p:not(.update-date) {
+    color: var(--color-muted);
+    line-height: 1.7;
+  }
+
+  .update-card-footer {
+    margin-top: auto;
+    padding-top: 2rem;
+    border-top: 1px solid var(--color-line);
+    color: var(--color-muted);
+  }
+
+  .update-card-footer a {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-calm);
+  }
+
+  @media (max-width: 720px) {
+    .filter-tools {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
+    .filter-result {
+      white-space: normal;
+    }
+
+    .updates-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .filter-chip {
+      transition: none;
+    }
+  }
+</style>

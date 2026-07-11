@@ -38,27 +38,51 @@ test('update filtering is accessible and restores the complete journal', async (
   await page.goto(`${projectBase}/updates/`);
 
   const filters = page.getByLabel('Filter updates by category');
-  const cards = page.locator('.updates-grid article');
-  await filters.scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => {
-    const island = document.querySelector('astro-island[component-url*="UpdateFilter"]');
-    return island !== null && !island.hasAttribute('ssr');
-  });
+  const cards = page.locator('[data-update-card]:visible');
+  const result = page.getByRole('status');
   await expect(filters.getByRole('button', { name: 'All', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await expect(cards).toHaveCount(5);
+  await expect(cards).toHaveCount(6);
 
   const backend = filters.getByRole('button', { name: 'Backend', exact: true });
-  await backend.focus();
-  await page.keyboard.press('Space');
+  const all = filters.getByRole('button', { name: 'All', exact: true });
+  await all.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(backend).toBeFocused();
   await expect(backend).toHaveAttribute('aria-pressed', 'true');
   await expect(cards).toHaveCount(1);
   await expect(cards.getByRole('heading')).toContainText(/Supabase and Qwen/i);
+  await expect(result).toHaveText('1 backend update shown.');
 
-  await filters.getByRole('button', { name: 'All', exact: true }).click();
-  await expect(cards).toHaveCount(5);
+  await all.click();
+  await expect(cards).toHaveCount(6);
+  await expect(result).toHaveText('6 updates shown.');
+});
+
+test('updates remain one complete journal with JavaScript disabled', async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+
+  await page.goto(`${projectBase}/updates/`);
+  await expect(page.locator('[data-update-card]')).toHaveCount(6);
+  await expect(page.getByLabel('Filter updates by category')).toHaveCount(0);
+  await expect(page.locator('astro-island')).toHaveCount(0);
+
+  await context.close();
+});
+
+test('update statuses are humanized and chronology links remain base-safe', async ({ page }) => {
+  await page.goto(`${projectBase}/updates/version-code-4-aab/`);
+
+  await expect(page.locator('.article-status')).toHaveText('In progress');
+  await expect(page.locator('main')).not.toContainText('in_progress');
+  const chronology = page.getByRole('navigation', { name: 'Update chronology' });
+  const links = await chronology.locator('a').evaluateAll((items) =>
+    items.map((item) => item.getAttribute('href')),
+  );
+  expect(links.every((href) => href?.startsWith(`${projectBase}/updates/`))).toBe(true);
 });
 
 test('status uses explicit state text and separates each evidence layer', async ({ page }) => {

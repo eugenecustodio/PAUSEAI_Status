@@ -5,7 +5,9 @@ import { z } from 'astro/zod';
 const evidenceLink = z
   .object({
     label: z.string().trim().min(1).max(80),
-    url: z.url(),
+    url: z.url().refine((url) => url.startsWith('https://'), {
+      message: 'Public evidence links must use HTTPS.',
+    }),
   })
   .strict();
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-11T10:35:36.712Z",
+  "generatedAt": "2026-07-11T11:38:06.011Z",
   "overallStatus": "operational",
   "stale": false,
   "checks": [
@@ -9,36 +9,36 @@
       "label": "Supabase Auth gateway",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-11T10:35:36.712Z",
+      "checkedAt": "2026-07-11T11:38:06.011Z",
       "summary": "Supabase Auth answered the latest synthetic reachability probe.",
-      "latencyMs": 830
+      "latencyMs": 732
     },
     {
       "id": "synthetic_account",
       "label": "Synthetic health account",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-11T10:35:36.712Z",
+      "checkedAt": "2026-07-11T11:38:06.011Z",
       "summary": "The dedicated synthetic account signed in and is active.",
-      "latencyMs": 834
+      "latencyMs": 634
     },
     {
       "id": "database_rls",
       "label": "Database and Row Level Security",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-11T10:35:36.712Z",
+      "checkedAt": "2026-07-11T11:38:06.011Z",
       "summary": "The synthetic owner profile was read through Row Level Security.",
-      "latencyMs": 805
+      "latencyMs": 613
     },
     {
       "id": "edge_functions",
       "label": "Edge Function availability",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-11T10:35:36.712Z",
+      "checkedAt": "2026-07-11T11:38:06.011Z",
       "summary": "All nine deployed Edge Functions answered safe availability checks.",
-      "latencyMs": 465
+      "latencyMs": 1133
     }
   ],
   "releaseEvidence": [
@@ -105,7 +105,7 @@
       "label": "Qwen classification",
       "status": "not_configured",
       "evidenceKind": "daily",
-      "checkedAt": "2026-07-11T10:35:36.712Z",
+      "checkedAt": "2026-07-11T11:38:06.011Z",
       "summary": "Daily Qwen verification is pending credential rotation.",
       "errorCode": "daily_disabled"
     },
@@ -114,7 +114,7 @@
       "label": "Qwen digest guidance",
       "status": "not_configured",
       "evidenceKind": "daily",
-      "checkedAt": "2026-07-11T10:35:36.712Z",
+      "checkedAt": "2026-07-11T11:38:06.011Z",
       "summary": "Daily Qwen verification is pending credential rotation.",
       "errorCode": "daily_disabled"
     },
@@ -123,7 +123,7 @@
       "label": "Zero-retention cleanup",
       "status": "not_configured",
       "evidenceKind": "daily",
-      "checkedAt": "2026-07-11T10:35:36.712Z",
+      "checkedAt": "2026-07-11T11:38:06.011Z",
       "summary": "Daily privacy lifecycle validation is not enabled yet.",
       "errorCode": "daily_disabled"
     }

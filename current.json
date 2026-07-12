@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-12T13:58:33.854Z",
+  "generatedAt": "2026-07-12T15:18:28.781Z",
   "overallStatus": "operational",
   "stale": false,
   "checks": [
@@ -9,36 +9,36 @@
       "label": "Supabase Auth gateway",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-12T13:58:33.854Z",
+      "checkedAt": "2026-07-12T15:18:28.781Z",
       "summary": "Supabase Auth answered the latest synthetic reachability probe.",
-      "latencyMs": 1067
+      "latencyMs": 794
     },
     {
       "id": "synthetic_account",
       "label": "Synthetic health account",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-12T13:58:33.854Z",
+      "checkedAt": "2026-07-12T15:18:28.781Z",
       "summary": "The dedicated synthetic account signed in and is active.",
-      "latencyMs": 920
+      "latencyMs": 690
     },
     {
       "id": "database_rls",
       "label": "Database and Row Level Security",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-12T13:58:33.854Z",
+      "checkedAt": "2026-07-12T15:18:28.781Z",
       "summary": "The synthetic owner profile was read through Row Level Security.",
-      "latencyMs": 1310
+      "latencyMs": 416
     },
     {
       "id": "edge_functions",
       "label": "Edge Function availability",
       "status": "operational",
       "evidenceKind": "live",
-      "checkedAt": "2026-07-12T13:58:33.854Z",
+      "checkedAt": "2026-07-12T15:18:28.781Z",
       "summary": "All nine deployed Edge Functions answered safe availability checks.",
-      "latencyMs": 582
+      "latencyMs": 467
     }
   ],
   "releaseEvidence": [
@@ -105,7 +105,7 @@
       "label": "Qwen classification",
       "status": "not_configured",
       "evidenceKind": "daily",
-      "checkedAt": "2026-07-12T13:58:33.854Z",
+      "checkedAt": "2026-07-12T15:18:28.781Z",
       "summary": "Daily Qwen verification is disabled; no current daily result is available.",
       "errorCode": "daily_disabled"
     },
@@ -114,7 +114,7 @@
       "label": "Qwen digest guidance",
       "status": "not_configured",
       "evidenceKind": "daily",
-      "checkedAt": "2026-07-12T13:58:33.854Z",
+      "checkedAt": "2026-07-12T15:18:28.781Z",
       "summary": "Daily Qwen verification is disabled; no current daily result is available.",
       "errorCode": "daily_disabled"
     },
@@ -123,7 +123,7 @@
       "label": "Zero-retention cleanup",
       "status": "not_configured",
       "evidenceKind": "daily",
-      "checkedAt": "2026-07-12T13:58:33.854Z",
+      "checkedAt": "2026-07-12T15:18:28.781Z",
       "summary": "Daily privacy lifecycle validation is disabled; no current daily result is available.",
       "errorCode": "daily_disabled"
     }

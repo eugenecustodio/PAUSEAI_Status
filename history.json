@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-13T18:11:16.858Z",
+  "generatedAt": "2026-07-13T19:52:28.288Z",
   "samples": [
     {
       "generatedAt": "2026-07-10T08:22:17.000Z",
@@ -1846,6 +1846,37 @@
           "status": "operational",
           "checkedAt": "2026-07-13T18:11:16.858Z",
           "latencyMs": 572
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-07-13T19:52:28.288Z",
+      "overallStatus": "operational",
+      "stale": false,
+      "checks": [
+        {
+          "id": "auth_gateway",
+          "status": "operational",
+          "checkedAt": "2026-07-13T19:52:28.288Z",
+          "latencyMs": 1146
+        },
+        {
+          "id": "synthetic_account",
+          "status": "operational",
+          "checkedAt": "2026-07-13T19:52:28.288Z",
+          "latencyMs": 972
+        },
+        {
+          "id": "database_rls",
+          "status": "operational",
+          "checkedAt": "2026-07-13T19:52:28.288Z",
+          "latencyMs": 998
+        },
+        {
+          "id": "edge_functions",
+          "status": "operational",
+          "checkedAt": "2026-07-13T19:52:28.288Z",
+          "latencyMs": 603
         }
       ]
     }

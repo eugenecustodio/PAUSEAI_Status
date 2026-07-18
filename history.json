@@ -1,53 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-18T09:48:13.715Z",
+  "generatedAt": "2026-07-18T11:19:17.409Z",
   "samples": [
-    {
-      "generatedAt": "2026-07-11T10:35:36.712Z",
-      "overallStatus": "operational",
-      "stale": false,
-      "checks": [
-        {
-          "id": "auth_gateway",
-          "status": "operational",
-          "checkedAt": "2026-07-11T10:35:36.712Z",
-          "latencyMs": 830
-        },
-        {
-          "id": "synthetic_account",
-          "status": "operational",
-          "checkedAt": "2026-07-11T10:35:36.712Z",
-          "latencyMs": 834
-        },
-        {
-          "id": "database_rls",
-          "status": "operational",
-          "checkedAt": "2026-07-11T10:35:36.712Z",
-          "latencyMs": 805
-        },
-        {
-          "id": "edge_functions",
-          "status": "operational",
-          "checkedAt": "2026-07-11T10:35:36.712Z",
-          "latencyMs": 465
-        },
-        {
-          "id": "qwen_classification",
-          "status": "not_configured",
-          "checkedAt": "2026-07-11T10:35:36.712Z"
-        },
-        {
-          "id": "qwen_digest",
-          "status": "not_configured",
-          "checkedAt": "2026-07-11T10:35:36.712Z"
-        },
-        {
-          "id": "privacy_cleanup",
-          "status": "not_configured",
-          "checkedAt": "2026-07-11T10:35:36.712Z"
-        }
-      ]
-    },
     {
       "generatedAt": "2026-07-11T11:38:06.011Z",
       "overallStatus": "operational",
@@ -3098,6 +3052,37 @@
           "status": "operational",
           "checkedAt": "2026-07-18T09:48:13.715Z",
           "latencyMs": 445
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-07-18T11:19:17.409Z",
+      "overallStatus": "operational",
+      "stale": false,
+      "checks": [
+        {
+          "id": "auth_gateway",
+          "status": "operational",
+          "checkedAt": "2026-07-18T11:19:17.409Z",
+          "latencyMs": 787
+        },
+        {
+          "id": "synthetic_account",
+          "status": "operational",
+          "checkedAt": "2026-07-18T11:19:17.409Z",
+          "latencyMs": 749
+        },
+        {
+          "id": "database_rls",
+          "status": "operational",
+          "checkedAt": "2026-07-18T11:19:17.409Z",
+          "latencyMs": 426
+        },
+        {
+          "id": "edge_functions",
+          "status": "operational",
+          "checkedAt": "2026-07-18T11:19:17.409Z",
+          "latencyMs": 486
         }
       ]
     }

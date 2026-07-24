@@ -1,38 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-24T10:00:42.273Z",
+  "generatedAt": "2026-07-24T11:57:04.636Z",
   "samples": [
-    {
-      "generatedAt": "2026-07-17T10:26:52.555Z",
-      "overallStatus": "operational",
-      "stale": false,
-      "checks": [
-        {
-          "id": "auth_gateway",
-          "status": "operational",
-          "checkedAt": "2026-07-17T10:26:52.555Z",
-          "latencyMs": 752
-        },
-        {
-          "id": "synthetic_account",
-          "status": "operational",
-          "checkedAt": "2026-07-17T10:26:52.555Z",
-          "latencyMs": 376
-        },
-        {
-          "id": "database_rls",
-          "status": "operational",
-          "checkedAt": "2026-07-17T10:26:52.555Z",
-          "latencyMs": 567
-        },
-        {
-          "id": "edge_functions",
-          "status": "operational",
-          "checkedAt": "2026-07-17T10:26:52.555Z",
-          "latencyMs": 435
-        }
-      ]
-    },
     {
       "generatedAt": "2026-07-17T11:59:21.468Z",
       "overallStatus": "operational",
@@ -2944,6 +2913,37 @@
           "status": "operational",
           "checkedAt": "2026-07-24T10:00:42.273Z",
           "latencyMs": 723
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-07-24T11:57:04.636Z",
+      "overallStatus": "operational",
+      "stale": false,
+      "checks": [
+        {
+          "id": "auth_gateway",
+          "status": "operational",
+          "checkedAt": "2026-07-24T11:57:04.636Z",
+          "latencyMs": 882
+        },
+        {
+          "id": "synthetic_account",
+          "status": "operational",
+          "checkedAt": "2026-07-24T11:57:04.636Z",
+          "latencyMs": 721
+        },
+        {
+          "id": "database_rls",
+          "status": "operational",
+          "checkedAt": "2026-07-24T11:57:04.636Z",
+          "latencyMs": 511
+        },
+        {
+          "id": "edge_functions",
+          "status": "operational",
+          "checkedAt": "2026-07-24T11:57:04.636Z",
+          "latencyMs": 589
         }
       ]
     }

@@ -1,38 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-10T06:25:43.842Z",
+  "generatedAt": "2026-10-10T13:05:11.343Z",
   "samples": [
-    {
-      "generatedAt": "2026-10-03T08:34:37.012Z",
-      "overallStatus": "operational",
-      "stale": false,
-      "checks": [
-        {
-          "id": "auth_gateway",
-          "status": "operational",
-          "checkedAt": "2026-10-03T08:34:37.012Z",
-          "latencyMs": 1078
-        },
-        {
-          "id": "synthetic_account",
-          "status": "operational",
-          "checkedAt": "2026-10-03T08:34:37.012Z",
-          "latencyMs": 575
-        },
-        {
-          "id": "database_rls",
-          "status": "operational",
-          "checkedAt": "2026-10-03T08:34:37.012Z",
-          "latencyMs": 682
-        },
-        {
-          "id": "edge_functions",
-          "status": "operational",
-          "checkedAt": "2026-10-03T08:34:37.012Z",
-          "latencyMs": 541
-        }
-      ]
-    },
     {
       "generatedAt": "2026-10-03T13:56:37.232Z",
       "overallStatus": "operational",
@@ -960,6 +929,37 @@
           "status": "operational",
           "checkedAt": "2026-10-10T06:25:43.842Z",
           "latencyMs": 586
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-10-10T13:05:11.343Z",
+      "overallStatus": "operational",
+      "stale": false,
+      "checks": [
+        {
+          "id": "auth_gateway",
+          "status": "operational",
+          "checkedAt": "2026-10-10T13:05:11.343Z",
+          "latencyMs": 583
+        },
+        {
+          "id": "synthetic_account",
+          "status": "operational",
+          "checkedAt": "2026-10-10T13:05:11.343Z",
+          "latencyMs": 476
+        },
+        {
+          "id": "database_rls",
+          "status": "operational",
+          "checkedAt": "2026-10-10T13:05:11.343Z",
+          "latencyMs": 812
+        },
+        {
+          "id": "edge_functions",
+          "status": "operational",
+          "checkedAt": "2026-10-10T13:05:11.343Z",
+          "latencyMs": 468
         }
       ]
     }

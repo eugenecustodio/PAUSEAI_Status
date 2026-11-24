@@ -1,38 +1,7 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-23T22:42:12.769Z",
+  "generatedAt": "2026-11-24T06:28:55.701Z",
   "samples": [
-    {
-      "generatedAt": "2026-11-17T01:06:15.486Z",
-      "overallStatus": "operational",
-      "stale": false,
-      "checks": [
-        {
-          "id": "auth_gateway",
-          "status": "operational",
-          "checkedAt": "2026-11-17T01:06:15.486Z",
-          "latencyMs": 976
-        },
-        {
-          "id": "synthetic_account",
-          "status": "operational",
-          "checkedAt": "2026-11-17T01:06:15.486Z",
-          "latencyMs": 920
-        },
-        {
-          "id": "database_rls",
-          "status": "operational",
-          "checkedAt": "2026-11-17T01:06:15.486Z",
-          "latencyMs": 1009
-        },
-        {
-          "id": "edge_functions",
-          "status": "operational",
-          "checkedAt": "2026-11-17T01:06:15.486Z",
-          "latencyMs": 570
-        }
-      ]
-    },
     {
       "generatedAt": "2026-11-17T09:16:23.967Z",
       "overallStatus": "operational",
@@ -712,6 +681,37 @@
           "status": "operational",
           "checkedAt": "2026-11-23T22:42:12.769Z",
           "latencyMs": 502
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-11-24T06:28:55.701Z",
+      "overallStatus": "operational",
+      "stale": false,
+      "checks": [
+        {
+          "id": "auth_gateway",
+          "status": "operational",
+          "checkedAt": "2026-11-24T06:28:55.701Z",
+          "latencyMs": 768
+        },
+        {
+          "id": "synthetic_account",
+          "status": "operational",
+          "checkedAt": "2026-11-24T06:28:55.701Z",
+          "latencyMs": 696
+        },
+        {
+          "id": "database_rls",
+          "status": "operational",
+          "checkedAt": "2026-11-24T06:28:55.701Z",
+          "latencyMs": 538
+        },
+        {
+          "id": "edge_functions",
+          "status": "operational",
+          "checkedAt": "2026-11-24T06:28:55.701Z",
+          "latencyMs": 516
         }
       ]
     }
